@@ -21,11 +21,7 @@ object StreamFactory {
     * @param fn The path to the file.
     * @param domain The domain:
     *               - json for JSON files, no separate parser required.
-    *               - cards, for credit cards transactions in CSV.
     *               - maritime, for AIS messages in CSV.
-    *               - vodafone.
-    *               - caviar.
-    *               - text.
     *               - bio.
     * @param isKafka Whether the source originates from Kafka or a file
     * @param kafkaConf Configuration file for Kafka
