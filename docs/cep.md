@@ -26,4 +26,4 @@ You must specify:
 * `streamArgs:` is to be used if you need to pass any special arguments to the event stream parser;
 * the path to a file with the statistics gathered. 
 
-See also the script [ui.demo.RunCLI](cef/src/main/scala/ui/demo/RunCLI.scala).
+See also the script [ui.demo.RunCLI](../cef/src/main/scala/ui/demo/RunCLI.scala).
