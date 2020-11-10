@@ -108,4 +108,4 @@ This will create the SDFA at this point.
 You can then wrap this SDFA in another provider with the source being this SDFA itself.  
 
 A similar process is followed for variable-order Markov models.
-See also the script [ui.demo.RunSrc](cef/src/main/scala/ui/demo/RunSrc.scala).
+See also the script [ui.demo.RunSrc](../cef/src/main/scala/ui/demo/RunSrc.scala).
