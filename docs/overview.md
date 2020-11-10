@@ -34,7 +34,7 @@ If you need a stream of events with more attributes,
 you can do so, 
 but you need to write a parser in order for the engine to know how to covert each line to and event.
 For an example from the maritime domain,
-see [stream.domain.maritime.MaritimeDomain](../cef/src/main/scala/stream/domain/maritime/MaritimeDomain.scala).
+see [stream.domain.maritime.MaritimeDomain](../cef/src/main/scala/stream/domain/maritime/MaritimeLineParser.scala).
 If you do so,
 then you need to also modify the function stream.StreamFactory.getDomainStreamSource
 in [stream.StreamFactory](../cef/src/main/scala/stream/StreamFactory.scala) 
