@@ -15,42 +15,41 @@ then the automaton must be converted to a Markov model.
 ## Event streams
 
 We currently use either files or Kafka topics to represent input streams. 
-See [stream](cef/src/main/scala/stream) package for all relevant code.
+See [stream](../cef/src/main/scala/stream) package for all relevant code.
 
 ### Streams from files
 
 Each event is a row and typically has a timestamp, an event type and a unique id.
 Any other attributes may also be present as a Map of attribute names to values
-(see [stream.GenericEvent](cef/src/main/scala/stream/GenericEvent.scala)).
+(see [stream.GenericEvent](../cef/src/main/scala/stream/GenericEvent.scala)).
 
 The simplest possible way to represent a stream is to create a CSV file 
 with each line corresponding to an event. 
 The first column should contain the event type (as a String) and the second column the 
 event's timestamp (as a Long).
 For this simple case, a parser is already available and you do not need to do anything else
-(see [stream.source.GenericCSVLineParser](cef/src/main/scala/stream/source/GenericCSVLineParser.scala)).
+(see [stream.source.GenericCSVLineParser](../cef/src/main/scala/stream/source/GenericCSVLineParser.scala)).
 
 If you need a stream of events with more attributes,
 you can do so, 
 but you need to write a parser in order for the engine to know how to covert each line to and event.
 For an example from the maritime domain,
-see [stream.domain.maritime.MaritimeDomain](cef/src/main/scala/stream/domain/maritime/MaritimeDomain.scala).
+see [stream.domain.maritime.MaritimeDomain](../cef/src/main/scala/stream/domain/maritime/MaritimeDomain.scala).
 If you do so,
 then you need to also modify the function stream.StreamFactory.getDomainStreamSource
-in [stream.StreamFactory](cef/src/main/scala/stream/StreamFactory.scala) 
+in [stream.StreamFactory](../cef/src/main/scala/stream/StreamFactory.scala) 
 and add another option for your domain.
-Then, whenever you run [recognition](docs/cep) or forecasting 
-(with [full-order](docs/ceffmm)  or [variable-order Markov models](docs/cefvmm)),
+Then, whenever you run [recognition](cep) or forecasting with [full-order Markov models](cefvmm),
 you need to specify the option *domainSpecificStream* (e.g., *--domainSpecificStream:maydomain*).
 
 Alternatively, you may also represent a stream as a JSON file
-(see [stream.source.JsonFileStreamSource](cef/src/main/scala/stream/source/JsonFileStreamSource.scala)).
+(see [stream.source.JsonFileStreamSource](../cef/src/main/scala/stream/source/JsonFileStreamSource.scala)).
 Each JSON attribute will be converted to an event attribute.
 
 
 ### Streams from Kafka
 
-See [Running example for simulating a stream](/docs/simulator.md).
+See [Running example for simulating a stream](simulator.md).
 ## Complex event definitions
 
 Definitions for complex events should be provided in a file.
@@ -123,11 +122,11 @@ Full example,
 ````
 
 IsEventTypePredicate just checks for the event type and is already implemented
-(see [fsm.symbolic.sfa.logic.predicates.IsEventTypePredicate](cef/src/main/scala/fsm/symbolic/sfa/logic/predicates/IsEventTypePredicate.scala)).
+(see [fsm.symbolic.sfa.logic.predicates.IsEventTypePredicate](../cef/src/main/scala/fsm/symbolic/sfa/logic/predicates/IsEventTypePredicate.scala)).
 
 Note that for each predicate in a pattern, 
 there must exist an implementation with the same name under
-[fsm.symbolic.sfa.logic.predicates](cef/src/main/scala/fsm/symbolic/sfa/logic/predicates).
+[fsm.symbolic.sfa.logic.predicates](../cef/src/main/scala/fsm/symbolic/sfa/logic/predicates).
 
 ## Declarations
 
