@@ -293,9 +293,4 @@ trait FSMInterface {
     }
   }
 
-  //TODO: remove method
-  //def getPattern: String
-  //TODO: remove method
-  //def getOutput(state: Int): Set[String]
-
 }
