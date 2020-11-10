@@ -2,11 +2,11 @@
 
 If you want to run forecasting with full-order Markov models,
 then the first step is to have compiled your pattern into an automaton,
-as described in [Recognition](docs/cep.md).
+as described in [Recognition](cep.md).
 Make sure that tha pattern,
 before being compiled, 
 is written with the order that you want,
-as described in [Overview](docs/overview.md).
+as described in [Overview](overview.md).
 After the automaton has been constructed,
 you need to run maximum likelihood estimation (MLE) to learn the Markov chain's transtion matrix
 from a given training stream. 
