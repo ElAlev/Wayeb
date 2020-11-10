@@ -39,7 +39,7 @@ If you do so,
 then you need to also modify the function stream.StreamFactory.getDomainStreamSource
 in [stream.StreamFactory](../cef/src/main/scala/stream/StreamFactory.scala) 
 and add another option for your domain.
-Then, whenever you run [recognition](cep) or forecasting with [full-order Markov models](cefvmm),
+Then, whenever you run [recognition](cep.md) or forecasting with [full-order Markov models](cefvmm.md),
 you need to specify the option *domainSpecificStream* (e.g., *--domainSpecificStream:maydomain*).
 
 Alternatively, you may also represent a stream as a JSON file
