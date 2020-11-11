@@ -39,7 +39,6 @@ to grant permission.
 ## Reference
 If you want to cite Wayeb, use the following references:
 
-(Version that works only with classical automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/debs/AlevizosAP17,
   author    = {Elias Alevizos and
@@ -57,7 +56,6 @@ If you want to cite Wayeb, use the following references:
 } 
 ```
 
-(Version that works with symbolic automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/lpar/AlevizosAP18,
   author    = {Elias Alevizos and
