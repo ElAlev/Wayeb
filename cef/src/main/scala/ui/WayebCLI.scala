@@ -53,7 +53,7 @@ object WayebCLI {
             validate(x =>
               if (Files.exists(Paths.get(x))) success
               else failure("Pattern file does not exist")).
-            text("The XML/SRE file for the patterns (required)."),
+            text("The SRE file for the patterns (required)."),
           opt[String]("outputFsm").required().valueName("<file path>").
             action((x, c) => c.copy(outputFsm = x)).
             text("Output file for the compiled/disambiguated FSM."),
