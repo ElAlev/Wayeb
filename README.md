@@ -81,7 +81,7 @@ If you want to cite Wayeb, use the following references:
 ## Contributors
 
 * Elias Alevizos (main developer).
-* Emmanouil Ntoulias (distributed version, to be released; stream simulator).
+* [Emmanouil Ntoulias](https://github.com/manosntoulias) (distributed version, to be released; stream simulator).
 * Maria Petropanagiotaki (relaxed selection policies).
 * [Evangelos Michelioudakis](https://github.com/vagmcs) (sbt structure).
 
