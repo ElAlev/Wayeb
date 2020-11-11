@@ -170,7 +170,7 @@ trait SREParser extends JavaTokenParsers {
 object ParseSREFormula$ extends SREParser {
   def main(args: Array[String]): Unit = {
     val home = System.getenv("WAYEB_HOME")
-    val fn = home + "/patterns/validation/pattern1.sre"
+    val fn = home + "/patterns/maritime/port/pattern.sre"
     val reader = new FileReader(fn)
     val parsed = parseAll(formulasList, reader)
     val f = parsed.get
