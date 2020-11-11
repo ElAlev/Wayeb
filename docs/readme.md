@@ -36,7 +36,7 @@ to grant permission.
 - [Using Wayeb as a library](lib.md)
 - [How to cite Wayeb](references.md)
 
-## Reference
+## Citing Wayeb
 If you want to cite Wayeb, use the following references:
 
 ```
