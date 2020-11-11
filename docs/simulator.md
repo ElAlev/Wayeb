@@ -34,7 +34,7 @@ Test the simulated stream using a kafka console consumer. Inside your kafka inst
 bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic defaultTopic
 ```
 
-#Wayeb reading from Kafka
+## Wayeb reading from Kafka
 
 Alternatively, you can have Wayeb consuming from the topic of the simulated stream. First compile some patterns and then start the recognition.
 
