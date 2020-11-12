@@ -14,7 +14,7 @@ $ sbt build
 ```
 
 This will compile Wayeb, run all unit tests and then create a fat jar. 
-If you wan to skip the unit tests, run the command:
+If you want to skip the unit tests, run the command:
 ```
 $ sbt assembly
 ```
