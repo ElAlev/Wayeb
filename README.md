@@ -5,10 +5,11 @@ It is based on symbolic automata and Markov models.
 
 ## Quick start
 
+### Building
+
 Assuming $WAYEB_HOME is the root directory of Wayeb,
 then go inside:
 
-### Building
 ```
 $ cd $WAYEB_HOME
 ```
