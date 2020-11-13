@@ -3,6 +3,62 @@
 Wayeb is a Complex Event Processing and Forecasting (CEP/F) engine written in [Scala](http://scala-lang.org).
 It is based on symbolic automata and Markov models.
 
+## Quick start
+
+Assuming $WAYEB_HOME is the root directory of Wayeb,
+then go inside:
+
+### Building
+```
+$ cd $WAYEB_HOME
+```
+
+Let's build a fat jar:
+
+```
+$ sbt assembly
+```
+
+### Recognition
+
+In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset, 
+consisting of 100 events. The event type is either A, B or C.
+In $WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre you may find a simple complex event definition for the above dataset.
+It detects an event of type A followed by another event of type B or C.
+If we want to run this pattern over the stream,
+we must first compile this pattern into an automaton 
+(make sure you have created a *results* folder under $WAYEB_HOME):
+```
+$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar compile --patterns:patterns/demo/a_seq_b_or_c.sre --declarations:patterns/demo/declarations.sre --outputFsm:results/a_seq_b_or_c.fsm
+```
+Now, *results/a_seq_b_or_c.fsm* is the produced serialized finite state machine.
+Note that we also provided as input a *declarations.sre* file.
+This file simply lets the engine know that the three predicates *IsEventTypePredicate(A)*, *IsEventTypePredicate(B)* and *IsEventTypePredicate(C)*
+are mutually exclusive (i.e., an event can have only one type).
+This helps the compiler create a more compact automaton.
+We can use this FSM to perform event recognition on this simple dataset:
+```
+java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --statsFile:results/recstats
+```
+
+### Forecasting
+
+For forecasting, we first need to use a training dataset in order to learn a probabilistic model for the FSM.
+For this simple guide, 
+we will use $WAYEB_HOME/data/demo/data.csv both as a training and as a test dataset,
+solely for convenience. 
+Normally, you should use different datasets.
+
+We first run maximum likelihood estimation:
+```
+java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar mle --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --outputMc:results/a_seq_b_or_c.mc
+```
+The file *results/a_seq_b_or_c.mc* is the serialized Markov model.
+The final step is to use the FSM and the Markov model to perform forecasting:
+```
+java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --spreadMethod:classify-nextk
+```
+
 ## License
 
 Copyright (c) Elias Alevizos
