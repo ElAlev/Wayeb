@@ -22,9 +22,9 @@ $ sbt assembly
 
 ### Recognition
 
-In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset, 
+In [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) you may find a very simple dataset, 
 consisting of 100 events. The event type is either A, B or C.
-In $WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre you may find a simple complex event definition for the above dataset.
+In [$WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre](patterns/demo/a_seq_b_or_c.sre) you may find a simple complex event definition for the above dataset.
 It detects an event of type A followed by another event of type B or C.
 If we want to run this pattern over the stream,
 we must first compile this pattern into an automaton 
@@ -46,7 +46,7 @@ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:resul
 
 For forecasting, we first need to use a training dataset in order to learn a probabilistic model for the FSM.
 For this simple guide, 
-we will use $WAYEB_HOME/data/demo/data.csv both as a training and as a test dataset,
+we will use [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) both as a training and as a test dataset,
 solely for convenience. 
 Normally, you should use different datasets.
 
