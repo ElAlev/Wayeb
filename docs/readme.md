@@ -22,9 +22,9 @@ $ sbt assembly
 
 ### Recognition
 
-In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset, 
+In [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) you may find a very simple dataset, 
 consisting of 100 events. The event type is either A, B or C.
-In $WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre you may find a simple complex event definition for the above dataset.
+In [$WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre](patterns/demo/a_seq_b_or_c.sre) you may find a simple complex event definition for the above dataset.
 It detects an event of type A followed by another event of type B or C.
 If we want to run this pattern over the stream,
 we must first compile this pattern into an automaton 
@@ -46,7 +46,7 @@ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:resul
 
 For forecasting, we first need to use a training dataset in order to learn a probabilistic model for the FSM.
 For this simple guide, 
-we will use $WAYEB_HOME/data/demo/data.csv both as a training and as a test dataset,
+we will use [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) both as a training and as a test dataset,
 solely for convenience. 
 Normally, you should use different datasets.
 
@@ -59,6 +59,7 @@ The final step is to use the FSM and the Markov model to perform forecasting:
 ```
 java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --spreadMethod:classify-nextk
 ```
+
 
 ## License
 
@@ -81,16 +82,15 @@ in any form, such as source code, libraries and executables, requires the writte
 permission of its author(s) (Elias Alevizos), possibly accompanied by a request for licensing fees.
 
 
-
 ## Documentation
 
-- [Building](building.md)
-- [Overview](overview.md)
-- [Recognition](cep.md)
-- [Forecasting with full-oder Markov models](ceffmm.md)
-- [Reading streams from Kafka](simulator.md)
-- [Using Wayeb as a library](lib.md)
-- [How to cite Wayeb](references.md)
+- [Building](docs/building.md)
+- [Overview](docs/overview.md)
+- [Recognition](docs/cep.md)
+- [Forecasting with full-oder Markov models](docs/ceffmm.md)
+- [Reading streams from Kafka](docs/simulator.md)
+- [Using Wayeb as a library](docs/lib.md)
+- [How to cite Wayeb](docs/references.md)
 
 ## Citing Wayeb
 If you want to cite Wayeb, use the following references:
