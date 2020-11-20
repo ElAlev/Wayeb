@@ -39,7 +39,7 @@ are mutually exclusive (i.e., an event can have only one type).
 This helps the compiler create a more compact automaton.
 We can use this FSM to perform event recognition on this simple dataset:
 ```
-java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --statsFile:results/recstats
+$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --statsFile:results/recstats
 ```
 
 ### Forecasting
@@ -52,12 +52,12 @@ Normally, you should use different datasets.
 
 We first run maximum likelihood estimation:
 ```
-java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar mle --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --outputMc:results/a_seq_b_or_c.mc
+$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar mle --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --outputMc:results/a_seq_b_or_c.mc
 ```
 The file *results/a_seq_b_or_c.mc* is the serialized Markov model.
 The final step is to use the FSM and the Markov model to perform forecasting:
 ```
-java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --spreadMethod:classify-nextk
+$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --spreadMethod:classify-nextk
 ```
 
 
