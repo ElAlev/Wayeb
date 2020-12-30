@@ -11,6 +11,9 @@ then this automaton is enough.
 If you are interested in forecasting as well, 
 then the automaton must be converted to a Markov model. 
 
+For a detailed description of the theory behind Wayeb, 
+see the papers under [docs/papers](../docs/papers).
+
 
 ## Event streams
 
