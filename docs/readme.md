@@ -84,13 +84,13 @@ permission of its author(s) (Elias Alevizos), possibly accompanied by a request 
 
 ## Documentation
 
-- [Building](docs/building.md)
-- [Overview](docs/overview.md)
-- [Recognition](docs/cep.md)
-- [Forecasting with full-oder Markov models](docs/ceffmm.md)
-- [Reading streams from Kafka](docs/simulator.md)
-- [Using Wayeb as a library](docs/lib.md)
-- [How to cite Wayeb](docs/references.md)
+- [Building](building.md)
+- [Overview](overview.md)
+- [Recognition](cep.md)
+- [Forecasting with full-oder Markov models](ceffmm.md)
+- [Reading streams from Kafka](simulator.md)
+- [Using Wayeb as a library](lib.md)
+- [How to cite Wayeb](references.md)
 
 ## Citing Wayeb
 If you want to cite Wayeb, use the following references:
