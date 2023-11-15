@@ -3,6 +3,13 @@
 Wayeb is a Complex Event Processing and Forecasting (CEP/F) engine written in [Scala](http://scala-lang.org).
 It is based on symbolic automata and full- or variable-order Markov models.
 
+## Updates
+
+- 2023/11/15
+  - Wayeb has been upgraded to version 0.6.0.
+  - Released code for variable-order Markov models.
+  - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
+
 ## Quick start
 
 ### Building

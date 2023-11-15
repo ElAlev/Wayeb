@@ -3,6 +3,13 @@
 Wayeb is a Complex Event Processing and Forecasting (CEP/F) engine written in [Scala](http://scala-lang.org).
 It is based on symbolic automata and full- or variable-order Markov models.
 
+## Updates
+
+- 2023/11/15
+    - Wayeb has been upgraded to version 0.6.0.
+    - Released code for variable-order Markov models.
+    - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
+
 ## Quick start
 
 ### Building
@@ -22,12 +29,12 @@ $ sbt assembly
 
 ### Recognition
 
-In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset, 
+In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset,
 consisting of 100 events. The event type is either A, B or C.
 In $WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre you may find a simple complex event definition for the above dataset.
 It detects an event of type A followed by another event of type B or C.
 If we want to run this pattern over the stream,
-we must first compile this pattern into an automaton 
+we must first compile this pattern into an automaton
 (make sure you have created a *results* folder under $WAYEB_HOME):
 ```
 $ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar compile --patterns:patterns/demo/a_seq_b_or_c.sre --declarations:patterns/demo/declarations.sre --outputFsm:results/a_seq_b_or_c.fsm
@@ -45,9 +52,9 @@ $ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar recognition --fsm:res
 ### Forecasting
 
 For forecasting, we first need to use a training dataset in order to learn a probabilistic model for the FSM.
-For this simple guide, 
+For this simple guide,
 we will use $WAYEB_HOME/data/demo/data.csv both as a training and as a test dataset,
-solely for convenience. 
+solely for convenience.
 Normally, you should use different datasets.
 
 We first run maximum likelihood estimation:
@@ -72,7 +79,7 @@ For use by individuals,
 Wayeb is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
 or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-This license is provided exclusively for research purposes. 
+This license is provided exclusively for research purposes.
 The results of any such research involving Wayeb must be made publicly available.
 
 For commercial/institutional/governmental use or any other use by private or public
