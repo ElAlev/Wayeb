@@ -68,7 +68,6 @@ project/plugins/project/
 
 # mine
 .idea
-results
 stats
 
 .DS_Store
