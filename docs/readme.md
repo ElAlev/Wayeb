@@ -90,7 +90,6 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 - [Reading streams from Kafka](docs/kafkainput.md)
 - [Using Wayeb as a library](docs/lib.md)
 - [How to cite Wayeb](docs/references.md)
-- [Reproducing results for VLDBJ experiments](docs/experiments.md)
 
 ## Citing Wayeb
 If you want to cite Wayeb, use the following references:
