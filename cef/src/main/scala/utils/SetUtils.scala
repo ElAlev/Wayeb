@@ -8,8 +8,8 @@ object SetUtils {
     * Estimates the power set of a set.
     *
     * @param initialSet The initial set.
-    * @tparam A The type of the elements of the initial set.
-    * @return The power set of the initial set.
+    * @tparam A         The type of the elements of the initial set.
+    * @return           The power set of the initial set.
     */
   def power[A](initialSet: Set[A]): Set[Set[A]] = {
       @annotation.tailrec
@@ -23,9 +23,9 @@ object SetUtils {
     * Estimates all the permutations of given length from a given set of elements.
     *
     * @param elements The given set of elements.
-    * @param length The length of the permutations.
-    * @tparam T The type of the given elements.
-    * @return All permutations of length length.
+    * @param length   The length of the permutations.
+    * @tparam T       The type of the given elements.
+    * @return         All permutations of length length.
     */
   def permutations[T](
                        elements: Set[T],
@@ -46,9 +46,9 @@ object SetUtils {
     * Also returns not just permutation of the given length but all permutations of length 1, 2, etc up to length.
     *
     * @param elements The given set of elements.
-    * @param length The length of the permutations.
-    * @tparam T The type of the given elements.
-    * @return All permutations up to the given length, as a map of lengths to sets of permutations.
+    * @param length   The length of the permutations.
+    * @tparam T       The type of the given elements.
+    * @return         All permutations up to the given length, as a map of lengths to sets of permutations.
     */
   def permutationsAlt[T](
                           elements: Set[T],
@@ -62,12 +62,12 @@ object SetUtils {
   /**
     * Auxiliary recursive function to estimate all permutations up to the given length.
     *
-    * @param elements The initial elements.
-    * @param finalLength The final length of permutations where we stop.
-    * @param currentLength The current length of permutations to be estimated.
-    * @param previousPerms Current permutations of length currentLength-1.
-    * @tparam T The type of elements.
-    * @return All permutations up to the given length, as a map of lengths to sets of permutations.
+    * @param elements       The initial elements.
+    * @param finalLength    The final length of permutations where we stop.
+    * @param currentLength  The current length of permutations to be estimated.
+    * @param previousPerms  Current permutations of length currentLength-1.
+    * @tparam T             The type of elements.
+    * @return               All permutations up to the given length, as a map of lengths to sets of permutations.
     */
   @scala.annotation.tailrec
   def permutationsAux1[T](
@@ -96,10 +96,10 @@ object SetUtils {
   /**
     * Appends to a set of permutations all elements from a given set.
     *
-    * @param elements The elements.
+    * @param elements      The elements.
     * @param previousPerms The already existing permutations.
-    * @tparam T The type of elements.
-    * @return The new permutations.
+    * @tparam T            The type of elements.
+    * @return              The new permutations.
     */
   private def permutationsAux2[T](
                                    elements: Set[T],
@@ -113,8 +113,8 @@ object SetUtils {
     * Estimates the cartesian product from given sets.
     *
     * @param sets The given sets.
-    * @tparam T The type of elements of the sets.
-    * @return The cartesian product.
+    * @tparam T   The type of elements of the sets.
+    * @return     The cartesian product.
     */
   def cartesian[T](sets: Set[Set[T]]): Set[Set[T]] = {
     require(sets.nonEmpty)
@@ -126,9 +126,9 @@ object SetUtils {
     * Auxiliary recursive function to estimate the cartesian product.
     *
     * @param currentCartesian The current cartesian product.
-    * @param remainingSets The sets the remain to be processed.
-    * @tparam T The type of elements.
-    * @return The cartesian product.
+    * @param remainingSets    The sets the remain to be processed.
+    * @tparam T               The type of elements.
+    * @return                 The cartesian product.
     */
   @scala.annotation.tailrec
   private def cartesianAux[T](
@@ -145,6 +145,51 @@ object SetUtils {
             for (cc <- currentCartesian) {
               for (h <- head) {
                 tmp = tmp + (cc + h)
+              }
+            }
+            tmp
+          }
+        cartesianAux(newCartesian, tail)
+      }
+    }
+  }
+
+  /**
+   * Estimates the cartesian product from given lists (not sets, which means that elements may be repeated).
+   *
+   * @param lists The given lists.
+   * @tparam T    The type of elements of the sets.
+   * @return      The cartesian product.
+   */
+  def cartesian[T](lists: List[List[T]]): List[List[T]] = {
+    require(lists.nonEmpty)
+    require(lists.forall(s => s.nonEmpty))
+    cartesianAux(List.empty[List[T]], lists)
+  }
+
+  /**
+   * Auxiliary recursive function to estimate the cartesian product of lists.
+   *
+   * @param currentCartesian The current cartesian product.
+   * @param remainingSets    The sets the remain to be processed.
+   * @tparam T               The type of elements.
+   * @return                 The cartesian product.
+   */
+  @scala.annotation.tailrec
+  private def cartesianAux[T](
+                               currentCartesian: List[List[T]],
+                               remainingSets: List[List[T]]
+                             ): List[List[T]] = {
+    remainingSets match {
+      case Nil => currentCartesian
+      case head :: tail => {
+        val newCartesian =
+          if (currentCartesian.isEmpty) head.map(h => List(h))
+          else { // currentCartesian.map(s => cartesian2(s,head)).map(ss => ss.flatten)
+            var tmp = List.empty[List[T]]
+            for (cc <- currentCartesian) {
+              for (h <- head) {
+                tmp = (h::cc)::tmp
               }
             }
             tmp

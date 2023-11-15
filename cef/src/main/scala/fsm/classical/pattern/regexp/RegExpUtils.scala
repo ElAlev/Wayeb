@@ -43,7 +43,7 @@ object RegExpUtils {
                            initPattern: RegExpTree,
                            allSymbols: Set[String]
                          ): RegExpTree = {
-    println(allSymbols)
+    //println(allSymbols)
     val sigmaStarPattern = RegExpUtils.getIterRE(RegExpUtils.getUnionStr(allSymbols.toList))
     val pattern = RegExpUtils.getConcatRE(List(sigmaStarPattern, initPattern))
     pattern
@@ -120,7 +120,7 @@ object RegExpUtils {
       def min(x: Int, y: Int): Int = if (x < y) x else y
     pattern match {
       // for a single symbol, exactly 1 is the number of symbols
-      case SymbolNode(_) => 1
+      case SymbolNode(_, _) => 1
       // iteration also accepts the empty word, so 0 is the least number
       case OperatorNode(ITER, _) => 0
       // for union, we must find the minimum number of symbols from all subexpressions

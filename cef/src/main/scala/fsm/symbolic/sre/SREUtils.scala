@@ -4,10 +4,10 @@ import java.io.FileReader
 import com.typesafe.scalalogging.LazyLogging
 import fsm.symbolic.sfa.IdGenerator
 import fsm.symbolic.sfa.Constants.truePredicate
-import fsm.symbolic.sfa.logic.{Predicate, Sentence}
 import fsm.symbolic.sre.SelectionStrategy.SelectionStrategy
 import fsm.classical.pattern.regexp.{OperatorNode, RegExpTree, SymbolNode}
-import fsm.symbolic.sre.SelectionUtils.{transformFormulaWithSelection, transformFormulaNoSelection}
+import fsm.symbolic.logic.{Predicate, Sentence}
+import fsm.symbolic.sre.SelectionUtils.{transformFormulaNoSelection, transformFormulaWithSelection}
 
 object SREUtils extends SREParser with DeclarationsParser with LazyLogging {
 
@@ -17,7 +17,7 @@ object SREUtils extends SREParser with DeclarationsParser with LazyLogging {
     * @param fn The file with the patterns
     * @return a list of Tuple3 where each Tuple3 contains the formula, its order and its partition attribute.
     */
-  def parseSRE(fn: String): List[(SREFormula, Int, String)] = {
+  def parseSRE(fn: String): List[(SREFormula, Int, String, Int, String)] = {
     val reader = new FileReader(fn)
     val parsed = parseAll(formulasList, reader)
     val f = parsed.get
@@ -80,7 +80,7 @@ object SREUtils extends SREParser with DeclarationsParser with LazyLogging {
                     patternsFile: String,
                     declarationsFile: String,
                     withSelection: Boolean
-                  ): (List[(SREFormula, Int, String)], Set[Set[Predicate]], Set[Sentence]) = {
+                  ): (List[(SREFormula, Int, String, Int, String)], Set[Set[Predicate]], Set[Sentence]) = {
     logger.info("Parsing formulas from " + patternsFile)
     val formulas = SREUtils.parseSRE(patternsFile)
     logger.debug("Parsed formulas: " + formulas.toString)
@@ -94,8 +94,8 @@ object SREUtils extends SREParser with DeclarationsParser with LazyLogging {
     }
     logger.debug("Checking for selection strategies")
     val transformedFormulas =
-      if (withSelection) formulas.map(f => (transformFormulaWithSelection(f._1), f._2, f._3))
-      else formulas.map(f => (transformFormulaNoSelection(f._1), f._2, f._3))
+      if (withSelection) formulas.map(f => (transformFormulaWithSelection(f._1), f._2, f._3, f._4, f._5))
+      else formulas.map(f => (transformFormulaNoSelection(f._1), f._2, f._3, f._4, f._5))
     (transformedFormulas, exclusives, extras)
   }
 
@@ -136,7 +136,23 @@ object SREUtils extends SREParser with DeclarationsParser with LazyLogging {
                           idg: IdGenerator
                         ): SREFormula = {
     re match {
-      case SymbolNode(symbol) => SRESentence(LogicAtomicSentence(LogicPredicate("IsEventTypePredicate"), List(LogicConstant(symbol))))
+      case SymbolNode(symbol, writeReg) => {
+        val atomicSentence = if (symbol.length == 1) {
+          LogicAtomicSentence(LogicPredicate("IsEventTypePredicate"), List(LogicConstant(symbol)))
+        }
+        else {
+          val spl = symbol.split(",")
+          val predicate  = LogicPredicate(spl(0))
+          val logicVar = LogicVariable("attr")
+          val regVar = RegisterVariable(spl(1))
+          LogicAtomicSentence(predicate, List(logicVar,regVar))
+        }
+        val sentence = writeReg match {
+          case Some(r) => SRESentence(atomicSentence, RegisterVariable(r))
+          case None => SRESentence(atomicSentence)
+        }
+        sentence
+      }
       case OperatorNode(fsm.classical.pattern.regexp.OperatorType.CONCAT, children) => {
         val leftSRE = re2formula(children.head, idg)
         val rightSRE = re2formula(children(1), idg)

@@ -1,5 +1,7 @@
 package fsm.symbolic.sfa
 
-abstract class SFAState {
+import fsm.symbolic.AutomatonState
+
+abstract class SFAState(override val id: Int) extends AutomatonState(id) {
 
 }

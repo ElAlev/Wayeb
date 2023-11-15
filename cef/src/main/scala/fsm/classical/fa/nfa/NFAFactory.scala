@@ -1,6 +1,8 @@
 package fsm.classical.fa.nfa
 
+import fsm.symbolic.Constants.deadStateIdConstant
 import fsm.classical.pattern.regexp.RegExpTree
+
 import scala.collection.mutable
 
 class NFAFactory {
@@ -91,10 +93,10 @@ object NFAFactory {
     *                      NFA.
     * @return The NFA that can handle the extra symbols.
     */
-  private def addExtraSymbols2NFA(
-                                   nfa: NFA,
-                                   stringSymbols: scala.collection.immutable.Set[String]
-                                 ): NFA = {
+  private[nfa] def addExtraSymbols2NFA(
+                                        nfa: NFA,
+                                        stringSymbols: scala.collection.immutable.Set[String]
+                                      ): NFA = {
     val nfaSymbols = nfa.getInputSymbols
     val commonSymbols = nfaSymbols.intersect(stringSymbols)
     val onlyStringSymbols = mutable.Set.empty[String]

@@ -1,7 +1,0 @@
-+(DistanceBetweenPredicate(-4.47530,48.38273,5.0,6.0),DistanceBetweenPredicate(-4.47530,48.38273,6.0,7.0),DistanceBetweenPredicate(-4.47530,48.38273,7.0,8.0),DistanceBetweenPredicate(-4.47530,48.38273,8.0,9.0),DistanceBetweenPredicate(-4.47530,48.38273,9.0,10.0)),
-+(HeadingTowardsPredicate(BrestPort)),
-+(IsEventTypePredicate(RESET)),
-~(IsEventTypePredicate(RESET),HeadingTowardsPredicate(BrestPort)),
-~(IsEventTypePredicate(RESET),WithinCirclePredicate(-4.47530,48.38273,5.0),DistanceBetweenPredicate(-4.47530,48.38273,5.0,6.0),DistanceBetweenPredicate(-4.47530,48.38273,6.0,7.0),DistanceBetweenPredicate(-4.47530,48.38273,7.0,8.0),DistanceBetweenPredicate(-4.47530,48.38273,8.0,9.0),DistanceBetweenPredicate(-4.47530,48.38273,9.0,10.0)),
-~(IsEventTypePredicate(RESET),OutsideCirclePredicate(-4.47530,48.38273,5.0)),
-~(WithinCirclePredicate(-4.47530,48.38273,5.0),OutsideCirclePredicate(-4.47530,48.38273,5.0))

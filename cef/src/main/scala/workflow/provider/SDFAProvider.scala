@@ -1,18 +1,22 @@
 package workflow.provider
 
-import java.io.{File, FileInputStream, ObjectInputStream}
 import com.typesafe.scalalogging.LazyLogging
+import fsm.CountPolicy.CountPolicy
 import fsm.SDFAInterface
-import fsm.classical.fa.dfa.DFAUtils
+import fsm.classical.fa.dfa.{DFA, DFAUtils}
 import fsm.classical.fa.nfa.NFAUtils
-import fsm.symbolic.sre.{SREFormula, SREUtils}
+import fsm.classical.pattern.regexp.RegExpTree
+import fsm.symbolic.logic.{AtomicSentence, Predicate, PredicateConstructor, Sentence}
 import fsm.symbolic.sfa.SFAUtils
-import fsm.symbolic.sfa.logic.{Predicate, Sentence}
 import fsm.symbolic.sfa.sdfa.{SDFA, SDFAUtils}
 import fsm.symbolic.sfa.snfa.SNFAUtils
+import fsm.symbolic.sre.{SREFormula, SREUtils}
+import model.vmm.mapper.Isomorphism
+import ui.ConfigUtils
 import workflow.condition.{Condition, FileExistsCondition}
-import fsm.CountPolicy.CountPolicy
-import workflow.provider.source.sdfa.{SDFASource, SDFASourceDirect, SDFASourceDirectI, SDFASourceFormula, SDFASourceFromSRE, SDFASourceLLDFA, SDFASourceSerialized}
+import workflow.provider.source.sdfa._
+
+import java.io.{File, FileInputStream, ObjectInputStream}
 
 object SDFAProvider {
   /**
@@ -34,12 +38,21 @@ object SDFAProvider {
   def apply(sdfaSource: SDFASourceDirect): SDFAProvider = new SDFAProvider(sdfaSource, List.empty[Condition])
 
   /**
-    * Constructor for SDFA provider when sdfaSource is workflow.provider.source.sdfa.SDFASourceFormula.
-    * The source contains the formulas for the SDFAs.
+    * Constructor for SDFA provider when sdfaSource is workflow.provider.source.sdfa.SDFASourceRegExp.
+    * The source contains the regular expression tree for a single SDFA.
     *
-    * @param sdfaSource A workflow.provider.source.sdfa.SDFASourceFormula.
+    * @param sdfaSource A workflow.provider.source.sdfa.SDFASourceRegExp.
     * @return A SDFA provider.
     */
+  def apply(sdfaSource: SDFASourceRegExp): SDFAProvider = new SDFAProvider(sdfaSource, List.empty[Condition])
+
+  /**
+   * Constructor for SDFA provider when sdfaSource is workflow.provider.source.sdfa.SDFASourceFormula.
+   * The source contains the formulas for the SDFAs.
+   *
+   * @param sdfaSource A workflow.provider.source.sdfa.SDFASourceFormula.
+   * @return A SDFA provider.
+   */
   def apply(sdfaSource: SDFASourceFormula): SDFAProvider = new SDFAProvider(sdfaSource, List.empty[Condition])
 
   /**
@@ -63,6 +76,16 @@ object SDFAProvider {
     new SDFAProvider(sdfaSource, List(new FileExistsCondition(sdfaSource.fn)))
 
   /**
+    * Constructor for SDFA provider when sdfaSource is workflow.provider.source.sdfa.SDFASourceDFA.
+    * The source contains a DFA and an isomorphism. The SDFA will be structurally equivalent to the DFA and have the
+    * isomorphism's minterms on its transitions.
+    *
+    * @param sdfaSource A workflow.provider.source.sdfa.SDFASourceDFA.
+    * @return A SDFA provider.
+    */
+  def apply(sdfaSource: SDFASourceDFA): SDFAProvider = new SDFAProvider(sdfaSource, List.empty[Condition])
+
+  /**
     * Constructor for SDFA provider when sdfaSource is workflow.provider.source.sdfa.SDFASourceLLDFA.
     * The source contains a LearnLib DFA.
     *
@@ -81,6 +104,7 @@ object SDFAProvider {
   *                     - SDFASourceFormula when a formula is available, again used mostly for testing.
   *                     - SDFASourceFromSRE when a file with patterns is given.
   *                     - SDFASourceSerialized when a serialized SDFA is given, used mostly after disambiguation.
+  *                     - SDFASourceDFA when a classical DFA is provided. Useful when we have too many symbols. Faster
   *                     to create first a DFA and then convert it to a SDFA.
   *                     - SDFASourceLLDFA when a classical DFA from LearnLib is provided. Only a single LLDFA can be
   *                     provided for now.
@@ -108,8 +132,10 @@ class SDFAProvider private (
         if (x.partitionAttributes.isEmpty) addIds(x.sdfa)
         else addIds(x.sdfa, x.partitionAttributes)
       case x: SDFASourceFormula => formula2sdfa(x.formulas, x.policy, x.exclusives, x.extras, x.minTermMethod)
+      case x: SDFASourceRegExp => re2sdfa(x.re,x.order,x.partitionAttribute,x.exclusives,x.extras,x.policy,x.minTermMethod)
       case x: SDFASourceFromSRE => sre2sdfa(x.sreFile, x.policy, x.declarations, x.minTermMethod)
       case x: SDFASourceSerialized => deserialize(x.fn)
+      case x: SDFASourceDFA => dfa2sdfa(x.dfa, x.iso)
       case x: SDFASourceLLDFA => lldfa2dfa2sdfa(
         x.states,
         x.transitions,
@@ -117,13 +143,40 @@ class SDFAProvider private (
         x.finals,
         x.streaming,
         x.disambiguate,
-        x.order
+        x.order,
+        x.partitionAttribute
       )
       case _ => {
         logger.error("Not valid SDFASource")
         throw new Error("Not valid SDFASource")
       }
     }
+  }
+
+  /**
+   * Given a regular expression tree, creates an equivalent SDFA.
+   *
+   * @param re                 The regular expression tree.
+   * @param order              The disambiguation order.
+   * @param partitionAttribute The partition attribute.
+   * @param policy             The counting policy.
+   * @param exclusives         Sets of exclusive predicates.
+   * @param extras             Sets of extra predicates.
+   * @param minTermMethod      The method for constructing the minterms, withsat or withoutsat.
+   * @return The equivalent SDFA (interface), as a list.
+   */
+  private def re2sdfa(
+                       re: RegExpTree,
+                       order: Int,
+                       partitionAttribute: String,
+                       exclusives: Set[Set[Predicate]],
+                       extras: Set[Sentence],
+                       policy: CountPolicy,
+                       minTermMethod: String
+                     ): List[SDFAInterface] = {
+
+    val formula = SREUtils.re2formula(re)
+    formula2sdfa(List((formula, order, partitionAttribute, 0, "count")),policy,exclusives,extras,minTermMethod)
   }
 
   /**
@@ -139,7 +192,7 @@ class SDFAProvider private (
   }
 
   /**
-    * Just creates and adds an identifier to each SDFA. Also adds a partitions attribute to each SDFA from the list of
+    * Just creates and adds an identifier to each SDFA. Also adds a partition attribute to each SDFA from the list of
     * given attributes.
     *
     * @param sdfas The list of SDFAs.
@@ -177,7 +230,7 @@ class SDFAProvider private (
     * @return a list of SDFA
     */
   private def formula2sdfa(
-                            formulas: List[(SREFormula, Int, String)],
+                            formulas: List[(SREFormula, Int, String, Int, String)],
                             policy: CountPolicy,
                             exclusives: Set[Set[Predicate]],
                             extras: Set[Sentence],
@@ -215,8 +268,23 @@ class SDFAProvider private (
                         declarations: String,
                         minTermMethod: String
                       ): List[SDFAInterface] = {
-    val (formulas, exclusives, extras) = SREUtils.sre2formulas(fn, declarations, withSelection = false)
+    val (formulas, exclusives, extras) = SREUtils.sre2formulas(fn, declarations, withSelection = true)
     formula2sdfa(formulas, policy, exclusives, extras, minTermMethod)
+  }
+
+  /**
+    * Converts a classical DFA to a SDFA, according to the provided isomorphism.
+    *
+    * @param dfa The original, classical DFA.
+    * @param iso The isomorphism, mapping each classical symbol to a minterm and vice versa.
+    * @return The "equivalent" SDFA interface, given as a list.
+    */
+  private def dfa2sdfa(
+                        dfa: DFA,
+                        iso: Isomorphism
+                      ): List[SDFAInterface] = {
+    val sdfa = SDFAUtils.dfa2sdfa(dfa, iso)
+    addIds(List(sdfa))
   }
 
   /**
@@ -236,7 +304,8 @@ class SDFAProvider private (
                               finals: Set[Int],
                               streaming: Boolean,
                               disambiguate: Boolean,
-                              order: Int
+                              order: Int,
+                              partitionAttribute: String
                             ): List[SDFAInterface] = {
     logger.debug("LLDFA has " + states.size + " states and " + finals.size + " finals.")
     logger.info("Building NFA from LLDFA")
@@ -246,7 +315,9 @@ class SDFAProvider private (
     //logger.debug("NFA has " + nfa.getAllStates.size + " states." + nfa.getAcceptingId.size + " are final.")
     logger.info("Converting NFA to DFA")
     val dfa = {
-      val tmpdfa = DFAUtils.convertNfa2Dfa(nfa)
+      val allSymbols: Set[String] = transitions.map(t => t._3)
+      val tmpnfa = NFAUtils.eliminateEpsilon(nfa,allSymbols)
+      val tmpdfa = DFAUtils.convertNfa2Dfa(tmpnfa)
       if (disambiguate) DFAUtils.disambiguate(tmpdfa, order)
       else tmpdfa
     }
@@ -254,7 +325,7 @@ class SDFAProvider private (
     logger.info("Converting DFA to SDFA")
     val sdfa = SDFAUtils.dfa2sdfa(dfa)
     logger.debug("SDFA has " + sdfa.states.size + " states and " + sdfa.finals.size + " finals.")
-    addIds(List(sdfa))
+    addIds(List(sdfa), List(partitionAttribute))
   }
 
   /**
@@ -302,6 +373,52 @@ class SDFAProvider private (
         partitionAttribute = si._1.partitionAttribute
       )
     )
+  }
+
+  /**
+    * Creates a SDFA from a LearnLib DFA. We first convert the LLDFA to a stream SNFA. Then we create the set of
+    * exclusives and add RESET as an extra minterm. We then determinize the SNFA and finally disambiguate it.
+    * CAUTION: For large automata, this method might be too slow.
+    * Use workflow.provider.SDFAProvider#lldfa2dfa2sdfa(scala.collection.immutable.Set, scala.collection.immutable.Set, int, scala.collection.immutable.Set, int)
+    * in these cases.
+    *
+    * @param states The set of state ids.
+    * @param transitions The set of transitions as (source,target,symbol) tuples.
+    * @param start The id of the start state.
+    * @param finals The ids of the final states.
+    * @param order The order of the disambiguated SDFA.
+    * @return The final, disambiguated SDFA.
+    */
+  private def lldfa2sdfa(
+                          states: Set[Int],
+                          transitions: Set[(Int, Int, String)],
+                          start: Int,
+                          finals: Set[Int],
+                          order: Int
+                        ): List[SDFAInterface] = {
+    logger.info("Building SNFA from LLDFA")
+    // First create the SNFA. We do not directly convert the LLDFA to a SDFA because we need to take into account the
+    // fact that symbols are mutually exclusive. We also need to add the RESET "symbol".
+    val snfaStream = SNFAUtils.buildStreamSNFAFromLLDFA(states, transitions, start, finals)
+    val resetPredicate = PredicateConstructor.getEventTypePred("RESET")
+    val resetSentence = AtomicSentence(resetPredicate).asInstanceOf[Sentence]
+    // all symbols and RESET are mutually exclusive
+    val predicates = transitions.map(t => t._3).map(symbol => PredicateConstructor.getEventTypePred(symbol)) +
+      resetPredicate
+    val exclusives = Set(predicates)
+    // we also add RESET as an extra symbol
+    val extras = Set(resetSentence)
+    logger.info("Determinizing")
+    val sdfa = SFAUtils.determinizeI(snfaStream, exclusives, extras, ConfigUtils.defaultMinTermMethod)
+    SDFAUtils.checkForDead(sdfa)
+    val sdfaWithPolicy = SDFAUtils.setPolicy(sdfa, ConfigUtils.defaultPolicy)
+    logger.info("Disambiguating")
+    val t1 = System.nanoTime()
+    val sdfaDis = SDFAUtils.disambiguateMutant(sdfaWithPolicy, order)
+    val t2 = System.nanoTime()
+    val td = (t2 - t1) / 1000000
+    logger.debug("Disambiguation time: " + td)
+    addIds(List(sdfaDis))
   }
 
   /**

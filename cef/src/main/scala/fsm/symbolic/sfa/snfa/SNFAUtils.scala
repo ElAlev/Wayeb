@@ -1,9 +1,10 @@
 package fsm.symbolic.sfa.snfa
 
+import fsm.symbolic.TransitionOutput
+import fsm.symbolic.logic.SentenceConstructor
+import fsm.symbolic.sfa._
 import fsm.symbolic.sre.RegularOperator._
 import fsm.symbolic.sre._
-import fsm.symbolic.sfa._
-import fsm.symbolic.sfa.logic.SentenceConstructor
 
 /**
   * Set of utils for building and handling SNFA.
@@ -28,13 +29,13 @@ object SNFAUtils {
     // first map all states of the LLDFA to states of the SNFA
     val states = llstates.map(llstate => (llstate, SNFAState(llstate))).toMap
     // now create all transitions using the symbols as guards
-    val transitions = lltransitions.map(lltransition => Transition(lltransition._1, lltransition._2, Guard(SentenceConstructor.getNewEventTypeSentence(lltransition._3)))).toList
+    val transitions = lltransitions.map(lltransition => SFATransition(lltransition._1, lltransition._2, SFAGuard(SentenceConstructor.getNewEventTypeSentence(lltransition._3)))).toList
     // we have to make the SNFA streaming, so we have to add a new start state with a true loop and connect it with
     // an epsilon transition to the old start state
     val startStateId = llstates.max + 1
     val startState = SNFAState(startStateId)
-    val epsilonTransition = Transition(startStateId, llstart, Guard(SentenceConstructor.getNewEpsilonSentence))
-    val loopTransition = Transition(startStateId, startStateId, Guard(SentenceConstructor.getNewTrueSentence))
+    val epsilonTransition = SFATransition(startStateId, llstart, SFAGuard(SentenceConstructor.getNewEpsilonSentence))
+    val loopTransition = SFATransition(startStateId, startStateId, SFAGuard(SentenceConstructor.getNewTrueSentence))
     val allStates = states + (startStateId -> startState)
     val allTransitions = loopTransition :: epsilonTransition :: transitions
     // all done, create the SNFA
@@ -63,9 +64,33 @@ object SNFAUtils {
     */
   def buildSNFAForStream(f: SREFormula): SNFA = {
     val trueFormula = new SRETrueSentence
-    val sigmaStar = SREOperator(ITER, List(trueFormula))
-    val streamFormula = SREOperator(SEQ, List(sigmaStar, f))
-    buildSNFA(streamFormula)
+    //trueFormula.unmark()
+    //val sigmaStar = SREOperator(ITER, List(trueFormula))
+    //val streamFormula = SREOperator(SEQ, List(sigmaStar, f))
+    //buildSNFA(streamFormula)
+    val nonStreamSNFA = buildSNFA(f)
+    val streamSNFA = addInitialSelfLoop(nonStreamSNFA)
+    streamSNFA
+  }
+
+  def addInitialSelfLoop(snfa: SNFA): SNFA = {
+    val newStateId = snfa.states.keySet.max + 1
+    val newState = SNFAState(newStateId)
+    val newEpsilonTransition = SFATransition(
+      newStateId,
+      snfa.start,
+      SFAGuard(SentenceConstructor.getNewEpsilonSentence)
+    )
+    val newTrueTransition = SFATransition(
+      newStateId,
+      newStateId,
+      SFAGuard(SentenceConstructor.getNewTrueSentence),
+      TransitionOutput.IGNORE
+    )
+    val newStates = snfa.states + (newStateId -> newState)
+    val newTransitions = newTrueTransition :: newEpsilonTransition :: snfa.transitions
+    val snfaWithSkip = SNFA(newStates, newTransitions, newStateId, snfa.finals)
+    snfaWithSkip
   }
 
   /**
@@ -84,17 +109,17 @@ object SNFAUtils {
     * function. This is essentially a recursive function, called from within buildSNFAFromSEQ, buildSNFAFromOR and
     * buildSNFAFromITER. buildSNFAFromSentence handles the base case.
     *
-    * @param f The original formula.
+    * @param formula The original formula.
     * @param idg The ID generator. Can generate unique IDs for the SNFA's states.
     * @return The SNFA corresponding to f.
     */
   private def buildSNFA(
-                         f: SREFormula,
+                         formula: SREFormula,
                          idg: IdGenerator
                        ): SNFA = {
-    f match {
-      case SRESentence(sentence: LogicSentence) => // case when no regular expression operators exist
-        buildSNFAFromSentence(sentence, idg)
+    formula match {
+      case SRESentence(sentence: LogicSentence, _) => // case when no regular expression operators exist
+        buildSNFAFromSentence(sentence, idg, formula.isMarked)
       case SREOperator(op: RegularOperator, formulas: List[SREFormula]) => {
         op match {
           case SEQ => buildSNFAFromSEQ(formulas, idg)
@@ -104,7 +129,7 @@ object SNFAUtils {
           case _ => throw new IllegalArgumentException("Unknown operator " + op)
         }
       }
-      case _ => throw new IllegalArgumentException("Unknown formula " + f.toString)
+      case _ => throw new IllegalArgumentException("Unknown formula " + formula.toString)
     }
   }
 
@@ -114,19 +139,25 @@ object SNFAUtils {
     *
     * @param sentence The single sentence of the formula.
     * @param idg The ID generator.
+   *  @param marked Flag that informs whether this sentence must mark its transition.
     * @return The SNFA for the single sentence.
     */
   private def buildSNFAFromSentence(
                                      sentence: LogicSentence,
-                                     idg: IdGenerator
+                                     idg: IdGenerator,
+                                     marked: Boolean
                                    ): SNFA = {
-    val startId = idg.getId
+    val startId = idg.getIdCautiousImmut
     val startState = SNFAState(startId)
-    val finalId = idg.getId
+    val finalId = idg.getIdCautiousImmut
     val finalState = SNFAState(finalId)
-    val actualSentence = SentenceConstructor.getNewSentenceInstance(sentence)
-    val guard = Guard(actualSentence)
-    val transition = Transition(startId, finalId, guard)
+    val actualSentence = sentence match {
+      case _: EpsilonSentence => SentenceConstructor.getNewEpsilonSentence
+      case _ => SentenceConstructor.getNewSentenceInstance(sentence)
+    }
+    val guard = SFAGuard(actualSentence)
+    val output = if (marked) TransitionOutput.TAKE else TransitionOutput.IGNORE
+    val transition = SFATransition(startId, finalId, guard, output)
     val states: Map[Int, SNFAState] = Map(startId -> startState, finalId -> finalState)
     SNFA(states, List(transition), startId, Set(finalId))
   }
@@ -149,8 +180,8 @@ object SNFAUtils {
     val finalTransitions = for (leftFinal <- leftNFA.finals) yield {
       val rightStartId = rightNFA.start
       val sentence = SentenceConstructor.getNewEpsilonSentence
-      val guard = Guard(sentence)
-      val transition = Transition(leftFinal, rightStartId, guard)
+      val guard = SFAGuard(sentence)
+      val transition = SFATransition(leftFinal, rightStartId, guard)
       transition
     }
     val transitions = finalTransitions.toList ::: (leftNFA.transitions ::: rightNFA.transitions)
@@ -178,37 +209,37 @@ object SNFAUtils {
     val leftNFA = buildSNFA(formulas.head, idg)
     val rightNFA = buildSNFA(formulas(1), idg)
 
-    val startId = idg.getId
+    val startId = idg.getIdCautiousImmut
     val startState = SNFAState(startId)
     val leftStartId = leftNFA.start
     val rightStartId = rightNFA.start
     val leftStartSent = SentenceConstructor.getNewEpsilonSentence
     val rightStartSent = SentenceConstructor.getNewEpsilonSentence
-    val leftStartGuard = Guard(leftStartSent)
-    val rightStartGuard = Guard(rightStartSent)
-    val leftStartTrans = Transition(startId, leftStartId, leftStartGuard)
-    val rightStartTrans = Transition(startId, rightStartId, rightStartGuard)
+    val leftStartGuard = SFAGuard(leftStartSent)
+    val rightStartGuard = SFAGuard(rightStartSent)
+    val leftStartTrans = SFATransition(startId, leftStartId, leftStartGuard)
+    val rightStartTrans = SFATransition(startId, rightStartId, rightStartGuard)
 
-    val finalId = idg.getId
+    val finalId = idg.getIdCautiousImmut
     val finalState = SNFAState(finalId)
     val states = (leftNFA.states ++ rightNFA.states) ++
       Map(startId -> startState, finalId -> finalState)
 
     val transitions = {
-      var finalTrans: List[Transition] = List.empty
+      var finalTrans: List[SFATransition] = List.empty
 
       val leftFinalTransitions = for (leftFinal <- leftNFA.finals) yield {
         val leftFinalSent = SentenceConstructor.getNewEpsilonSentence
-        val leftFinalGuard = Guard(leftFinalSent)
-        val leftFinalTrans = Transition(leftFinal, finalId, leftFinalGuard)
+        val leftFinalGuard = SFAGuard(leftFinalSent)
+        val leftFinalTrans = SFATransition(leftFinal, finalId, leftFinalGuard)
         leftFinalTrans
       }
       finalTrans = leftFinalTransitions.toList ::: finalTrans
 
       val rightFinalTransitions = for (rightFinal <- rightNFA.finals) yield {
         val rightFinalSent = SentenceConstructor.getNewEpsilonSentence
-        val rightFinalGuard = Guard(rightFinalSent)
-        val rightFinalTrans = Transition(rightFinal, finalId, rightFinalGuard)
+        val rightFinalGuard = SFAGuard(rightFinalSent)
+        val rightFinalTrans = SFATransition(rightFinal, finalId, rightFinalGuard)
         rightFinalTrans
       }
       finalTrans = rightFinalTransitions.toList ::: finalTrans
@@ -242,30 +273,30 @@ object SNFAUtils {
 
     val loopTransitions = for (subFinal <- subNFA.finals) yield {
       val loopSent = SentenceConstructor.getNewEpsilonSentence
-      val loopGuard = Guard(loopSent)
-      val loopTrans = Transition(subFinal, subNFA.start, loopGuard)
+      val loopGuard = SFAGuard(loopSent)
+      val loopTrans = SFATransition(subFinal, subNFA.start, loopGuard)
       loopTrans
     }
 
-    val startId = idg.getId
+    val startId = idg.getIdCautiousImmut
     val startState = SNFAState(startId)
-    val finalId = idg.getId
+    val finalId = idg.getIdCautiousImmut
     val finalState = SNFAState(finalId)
 
     val finalTransitions = for (subFinal <- subNFA.finals) yield {
       val finalsSent = SentenceConstructor.getNewEpsilonSentence
-      val finalsGuard = Guard(finalsSent)
-      val finalsTrans = Transition(subFinal, finalId, finalsGuard)
+      val finalsGuard = SFAGuard(finalsSent)
+      val finalsTrans = SFATransition(subFinal, finalId, finalsGuard)
       finalsTrans
     }
 
     val startFinalSent = SentenceConstructor.getNewEpsilonSentence
-    val startFinalGuard = Guard(startFinalSent)
-    val startFinalTrans = Transition(startId, finalId, startFinalGuard)
+    val startFinalGuard = SFAGuard(startFinalSent)
+    val startFinalTrans = SFATransition(startId, finalId, startFinalGuard)
 
     val startsSent = SentenceConstructor.getNewEpsilonSentence
-    val startsGuard = Guard(startsSent)
-    val startsTrans = Transition(startId, subNFA.start, startsGuard)
+    val startsGuard = SFAGuard(startsSent)
+    val startsTrans = SFATransition(startId, subNFA.start, startsGuard)
 
     val states = subNFA.states ++ Map(startId -> startState, finalId -> finalState)
     val transitions = loopTransitions.toList ::: finalTransitions.toList ::: List(startFinalTrans, startsTrans) ::: subNFA.transitions
@@ -293,7 +324,7 @@ object SNFAUtils {
     //val finalId = idg.getId
     val finalIds = completedSNFA.states.keySet &~ completedSNFA.finals
     val states = completedSNFA.states
-    val transitions = completedSNFA.transitions
+    val transitions = completedSNFA.transitions.map(t => SFATransition(t.source, t.target, t.guard.asInstanceOf[SFAGuard], TransitionOutput.IGNORE))
     SNFA(states, transitions, startId, finalIds)
   }
 

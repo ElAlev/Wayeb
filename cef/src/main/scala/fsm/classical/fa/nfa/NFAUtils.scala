@@ -1,6 +1,7 @@
 package fsm.classical.fa.nfa
 
 import fsm.CountPolicy._
+import fsm.classical.fa.nfa.NFAFactory.addExtraSymbols2NFA
 import fsm.classical.pattern.regexp.{OperatorNode, RegExpTree, SymbolNode}
 import fsm.classical.pattern.regexp.OperatorType._
 import ui.ConfigUtils
@@ -27,7 +28,7 @@ object NFAUtils {
     var stateId = lastStateId
     var nfa: NFA = null
     regExpTree match {
-      case SymbolNode(symbol) => {
+      case SymbolNode(symbol, _) => {
         // If the expression is a single symbol, create a start and a final state and connect them.
         nfa = new NFA
         stateId += 1
@@ -254,6 +255,23 @@ object NFAUtils {
     finals.foreach(f => nfa.setStateAsAccepting(f))
     nfa.setStateAsStart(start)
     nfa
+  }
+
+  /**
+   * From a given NFA, eliminates all epsilon transitions. Also adds transitions for all symbols.
+   *
+   * @param nfa The original NFA, possibly with epsilon transitions.
+   * @param stringSymbols All symbols that the NFA must handle.
+   * @return A NFA without epsilon transitions that can handle all symbols.
+   */
+  def eliminateEpsilon(
+                        nfa: NFA,
+                        stringSymbols: scala.collection.immutable.Set[String]
+                      ): NFA = {
+    val eliminator = new Eliminator(nfa)
+    val eliminated = eliminator.eliminate()
+    NFAFactory
+    addExtraSymbols2NFA(eliminated, stringSymbols)
   }
 
   /**

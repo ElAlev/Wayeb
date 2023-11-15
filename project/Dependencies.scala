@@ -26,7 +26,6 @@ object Dependencies {
     final val Json = "2.7.4"
     final val Flink = "1.9.0"
 
-    final val ScalaTikz = "0.4.4"
   }
 
   // Logging using slf4j and logback
@@ -61,7 +60,6 @@ object Dependencies {
     "com.typesafe" % "config" % v.Config,
     "de.learnlib" % "learnlib-rpni" % v.LearnLib,
     "com.typesafe.play" %% "play-json" % v.Json,
-    "org.apache.flink" %% "flink-connector-kafka" % v.Flink,
-    "com.github.vagmcs" %% "scalatikz" % v.ScalaTikz
+    "org.apache.flink" %% "flink-connector-kafka" % v.Flink
   )
 }

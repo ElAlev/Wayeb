@@ -1,6 +1,6 @@
 package fsm.symbolic.sre
 
-import fsm.symbolic.sfa.logic.{LogicUtils, Predicate, Sentence}
+import fsm.symbolic.logic.{LogicUtils, Predicate, Sentence}
 import utils.StringUtils.list2Str
 
 abstract class Declaration

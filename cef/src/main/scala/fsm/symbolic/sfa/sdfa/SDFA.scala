@@ -2,15 +2,17 @@ package fsm.symbolic.sfa.sdfa
 
 import java.io.{FileOutputStream, ObjectOutputStream}
 import com.github.tototoshi.csv.CSVWriter
-import fsm.symbolic.sfa.logic.Sentence
-import fsm.symbolic.sfa.{SFA, Transition}
+import fsm.symbolic.TransitionOutput.{IGNORE, TransitionOutput}
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.{SFA, SFATransition}
 import stream.GenericEvent
+
 import scala.util.control.Breaks._
 
 object SDFA {
   def apply(
              states: Map[Int, SDFAState],
-             transitions: List[Transition],
+             transitions: List[SFATransition],
              start: Int,
              finals: Set[Int]
            ): SDFA = {
@@ -20,7 +22,7 @@ object SDFA {
 
   def apply(
              states: Set[Int],
-             transitions: List[Transition],
+             transitions: List[SFATransition],
              start: Int,
              finals: Set[Int]
            ): SDFA = {
@@ -44,35 +46,13 @@ object SDFA {
   */
 case class SDFA private[sfa] (
                                states: Map[Int, SDFAState],
-                               transitions: List[Transition],
-                               start: Int,
-                               finals: Set[Int],
+                               transitions: List[SFATransition],
+                               override val start: Int,
+                               override val finals: Set[Int],
                                duplicates: Map[Int, Set[Int]]
                              ) extends SFA(states, transitions, start, finals) with Serializable {
 
   private val deltaOnSentence: Map[(Int, Sentence), Set[Int]] = Map[(Int, Sentence), Set[Int]]() //buildDeltaOnSentence
-
-  /**
-    * Checks whether a given state is a final state.
-    *
-    * @param state The id of the given state.
-    * @return True if it is a final state.
-    */
-  def isFinal(state: Int): Boolean = {
-    require(states.contains(state))
-    finals.contains(state)
-  }
-
-  /**
-    * Checks whether a given state is the start state.
-    *
-    * @param state The id of the given state.
-    * @return True if it is the start state.
-    */
-  def isStart(state: Int): Boolean = {
-    require(states.contains(state))
-    state == start
-  }
 
   /**
     * Finds all the original states, i.e., states that are not duplicates.
@@ -162,79 +142,9 @@ case class SDFA private[sfa] (
     else {
       val newSets = front.toList.map(x => getDeepDuplicates(x) + x)
       val newTraversed = traversed ++ newSets
-      val newFront = getNextStates(newSets.flatten.toSet).intersect(originalsLeft)
+      val newFront = getNextStatesFromStates(newSets.flatten.toSet).intersect(originalsLeft)
       val newOriginalsLeft = originalsLeft -- newFront
       traverseAux(newOriginalsLeft, newFront, newTraversed)
-    }
-  }
-
-  /**
-    * Finds all the states we can reach from the given states with one transition.
-    *
-    * @param statesSet The ids of the given states.
-    * @return The set of ids of the states we can reach.
-    */
-  private def getNextStates(statesSet: Set[Int]): Set[Int] = {
-    statesSet.flatMap(s => getNextStates(s))
-  }
-
-  /**
-    * Finds all the states we can reach from the given state with one transition.
-    *
-    * @param state The id of the given state.
-    * @return The set of ids of the states we can reach.
-    */
-  private def getNextStates(state: Int): Set[Int] = {
-    transitions.filter(t => t.source == state).map(t => t.target).toSet
-  }
-
-  /**
-    * Checks whether two states are connected with a transition.
-    *
-    * @param from The id of the candidate source state.
-    * @param to The id of the candidate target state.
-    * @return True if the two states are connected.
-    */
-  def connected(
-                 from: Int,
-                 to: Int
-               ): Boolean = {
-    val next = getNextStates(from)
-    next.contains(to)
-  }
-
-  /**
-    * Checks whether a given "word" of events is accepted by the SDFA.
-    *
-    * @param events The given "word" of events.
-    * @return True if the SDFA accepts the "word".
-    */
-  override def accepts(events: List[GenericEvent]): Boolean = {
-    require(events.nonEmpty)
-    val stateReached = getDelta(start, events)
-    finals.contains(stateReached)
-  }
-
-  /**
-    * Finds the state we can reach from a given state with a given "word" of events.
-    *
-    * @param stateId The id of the given state.
-    * @param events The "word" of events.
-    * @return The id of the reached state.
-    */
-  @scala.annotation.tailrec
-  private def getDelta(
-                        stateId: Int,
-                        events: List[GenericEvent]
-                      ): Int = {
-    require(events.nonEmpty)
-    events match {
-      case Nil => throw new IllegalArgumentException
-      case head :: Nil => getDelta(stateId, head).head
-      case head :: tail => {
-        val nextState = getDelta(stateId, head).head
-        getDelta(nextState, tail)
-      }
     }
   }
 
@@ -246,15 +156,15 @@ case class SDFA private[sfa] (
     * @return The id of the reached state, provided as a set for compatibility reasons with method of superclass. At
     *         most one state can be reached.
     */
-  override def getDelta(
-                         fromStateId: Int,
-                         withEvent: GenericEvent
-                       ): Set[Int] = {
-    val relevantTransitions = transitionsMap(fromStateId)
-    val destination = getDestination(relevantTransitions, withEvent)
+  override def getDeltaWithEpsilon(
+                                    fromStateId: Int,
+                                    withEvent: GenericEvent
+                                  ): Set[Int] = {
+    val relevantTransitions = transitionsMap(fromStateId).map(x => x.asInstanceOf[SFATransition])
+    val destination = getDestination(relevantTransitions.toList, withEvent)
     //TODO: If no enabled transitions are found, we return Set(-1). Probably not the best solution. Maybe better to
     // return empty set.
-    Set(destination)
+    Set(destination._1)
     //getDeltaWithStats(s,e)
   }
 
@@ -268,16 +178,19 @@ case class SDFA private[sfa] (
     */
   @scala.annotation.tailrec
   private def getDestination(
-                              transitions: List[Transition],
+                              transitions: List[SFATransition],
                               event: GenericEvent
-                            ): Int = {
+                            ): (Int, TransitionOutput) = {
     transitions match {
       //TODO: Make sure that returning -1 in case of no enabled transitions is safe. Typically all state ids are not
       // negative, but check what happens with dead states.
-      case Nil => -1
+      case Nil => {
+        logger.debug("No enabled transitions")
+        (-1, IGNORE)
+      }
       case head :: tail => {
         val enabled = head.enabled(event)
-        if (enabled) head.target else getDestination(tail, event)
+        if (enabled) (head.target, head.output) else getDestination(tail, event)
       }
     }
   }
@@ -297,11 +210,11 @@ case class SDFA private[sfa] (
     val home = System.getenv("WAYEB_HOME")
     val writer = CSVWriter.open(home + "/results/deltaStats.csv", append = true)
     val t1 = System.nanoTime()
-    val relevantTransitions = transitionsMap(state)
+    val relevantTransitions = transitionsMap(state).map(x => x.asInstanceOf[SFATransition])
     val t2 = System.nanoTime()
     var row: List[String] = List((t2 - t1).toString)
     val t3 = System.nanoTime()
-    val destination = getDestinationWithStats(relevantTransitions, event, 0, 0)
+    val destination = getDestinationWithStats(relevantTransitions.toList, event, 0, 0)
     val t4 = System.nanoTime()
     row = (t4 - t3).toString :: row
     row = destination._2.toString :: row
@@ -323,7 +236,7 @@ case class SDFA private[sfa] (
     */
   @scala.annotation.tailrec
   private def getDestinationWithStats(
-                                       transitions: List[Transition],
+                                       transitions: List[SFATransition],
                                        event: GenericEvent,
                                        counter: Int,
                                        enabledTime: Long

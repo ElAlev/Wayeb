@@ -22,10 +22,10 @@ class EngineSpec extends FlatSpec {
     val es = ss.emitEventsAndClose(EmitMode.BUFFER)
 
     val md = new MatchDump()
-    val expectedMatch1 = new Match()
+    val expectedMatch1 = Match()
     expectedMatch1.setEvents(ListBuffer(1, 2))
     expectedMatch1.setFull(true)
-    val expectedMatch2 = new Match()
+    val expectedMatch2 = Match()
     expectedMatch2.setEvents(ListBuffer(3, 4))
     expectedMatch2.setFull(true)
     md.addMatch(expectedMatch1)
@@ -33,7 +33,7 @@ class EngineSpec extends FlatSpec {
 
     val dfaProvider = DFAProvider(DFASourceRegExp(mypattern, policy, 0, es.getEventTypes))
     val fsmp = FSMProvider(dfaProvider)
-    val erf = ERFTask(fsmp, ss, show = false)
+    val erf = ERFTask(fsmp, ss, show = false, reset = false)
     val prof = erf.execute()
     prof.printMatches()
 

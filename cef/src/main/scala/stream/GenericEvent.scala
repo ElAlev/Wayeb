@@ -11,11 +11,11 @@ object GenericEvent {
     * @return The event.
     */
   def apply(
-      id: Int,
-      eventType: String,
-      timestamp: Long,
-      extraArgs: Map[String, Any]
-  ): GenericEvent =
+             id: Int,
+             eventType: String,
+             timestamp: Long,
+             extraArgs: Map[String, Any]
+           ): GenericEvent =
     new GenericEvent(id, eventType, timestamp, extraArgs)
 
   /**
@@ -27,10 +27,10 @@ object GenericEvent {
     * @return The event.
     */
   def apply(
-      id: Int,
-      eventType: String,
-      timestamp: Long
-  ): GenericEvent =
+             id: Int,
+             eventType: String,
+             timestamp: Long
+           ): GenericEvent =
     new GenericEvent(id, eventType, timestamp, Map[String, Any]())
 
   /**
@@ -42,9 +42,9 @@ object GenericEvent {
     * @return The event.
     */
   def apply(
-      eventType: String,
-      timestamp: Long
-  ): GenericEvent =
+             eventType: String,
+             timestamp: Long
+           ): GenericEvent =
     new GenericEvent(timestamp.toInt, eventType, timestamp, Map[String, Any]())
 }
 
@@ -95,5 +95,5 @@ class GenericEvent(
   }
 
   override def toString: String =
-    id + "\t|\t" + timestamp + "\t|\t" + eventType + "\t|\t" + extraArgs.toString()
+    id + "|" + timestamp + "|" + eventType + "|" + extraArgs.toString()
 }

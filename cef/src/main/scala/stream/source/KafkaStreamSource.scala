@@ -37,10 +37,15 @@ class KafkaStreamSource(
     * A consumer will be created with default properties taken from misc/KafkaConf.properties. It reads
     * messages from the kafka queue and forwards them to the listener.
     *
-    * @param mode The mode, BUFFER or ONLINE. Not used
+    * @param mode     The mode, BUFFER or ONLINE. Not used
+    * @param timeout  The time (in seconds) the source is allowed to run. After the timeout, the source should stop
+    *                 emitting events. Irrelevant here.
     * @return The stream as an array of events.
     */
-  override def emitEvents(mode: EmitMode): EventStream = {
+  override def emitEvents(
+                           mode: EmitMode,
+                           timeout: Long
+                         ): EventStream = {
 
     val consumer = setupConsumer
     var totalCounter = 1
@@ -75,7 +80,7 @@ class KafkaStreamSource(
       props.load(new FileReader(file))
 
     val consumer = new KafkaConsumer[String, String](props)
-    consumer.subscribe(java.util.Arrays.asList(props.getProperty("inputTopic", "defaultTopic")))
+    consumer.subscribe(java.util.Arrays.asList(props.getProperty("inputTopic", "wayebTopic")))
     consumer
   }
 

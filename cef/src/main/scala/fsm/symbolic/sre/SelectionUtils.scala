@@ -69,10 +69,11 @@ object SelectionUtils {
     * @return The transformed formula
     */
   private def transformFormulaWithSelectionAux(
-      f: SREFormula,
-      selectionStrategy: SelectionStrategy
-  ): SREFormula = {
+                                                f: SREFormula,
+                                                selectionStrategy: SelectionStrategy
+                                              ): SREFormula = {
     val trueFormula = new SRETrueSentence
+    trueFormula.unmark()
     f match {
       case x: SRESentence => x
       case x: SREOperator => {
@@ -132,19 +133,19 @@ object SelectionUtils {
     * @return the transformed formula
     */
   private def connectFormulasWithTrueStar(
-      formulas: List[SREFormula],
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                           formulas: List[SREFormula],
+                                           trueFormula: SRETrueSentence
+                                         ): SREFormula = {
     require(formulas.size >= 2)
     connectFormulasWithTrueStar(formulas.tail, formulas.head, trueFormula)
   }
 
   @scala.annotation.tailrec
   private def connectFormulasWithTrueStar(
-      formulas: List[SREFormula],
-      connectedFormula: SREFormula,
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                           formulas: List[SREFormula],
+                                           connectedFormula: SREFormula,
+                                           trueFormula: SRETrueSentence
+                                         ): SREFormula = {
     formulas match {
       case Nil => connectedFormula
       case head :: tail => {
@@ -166,24 +167,25 @@ object SelectionUtils {
     * @return the transformed formula
     */
   private def connectFormulasForNextSeq(
-      formulas: List[SREFormula],
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                         formulas: List[SREFormula],
+                                         trueFormula: SRETrueSentence
+                                       ): SREFormula = {
     require(formulas.size >= 2)
     connectFormulasForNextSeq(formulas.tail, formulas.head, trueFormula)
   }
 
   @scala.annotation.tailrec
   private def connectFormulasForNextSeq(
-      formulas: List[SREFormula],
-      connectedFormula: SREFormula,
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                         formulas: List[SREFormula],
+                                         connectedFormula: SREFormula,
+                                         trueFormula: SRETrueSentence
+                                       ): SREFormula = {
     formulas match {
       case Nil => connectedFormula
       case head :: tail =>
         // R2 formula
-        val newFormulaToConnect = head
+        val newFormulaToConnect = head.cloneFormula()
+        newFormulaToConnect.unmark()
         // T*
         val trueStar = SREOperator(RegularOperator.ITER, List(trueFormula))
         // T*;R2
@@ -195,7 +197,7 @@ object SelectionUtils {
         // R1;!(T*;R2;T*)
         val subformula3 = SREOperator(RegularOperator.SEQ, List(connectedFormula, notSubformula))
         //R1;!(T*;R2;T*);R2
-        val newConnected = SREOperator(RegularOperator.SEQ, List(subformula3, newFormulaToConnect))
+        val newConnected = SREOperator(RegularOperator.SEQ, List(subformula3, head))
         connectFormulasForNextSeq(tail, newConnected, trueFormula)
     }
   }
@@ -209,9 +211,9 @@ object SelectionUtils {
     * @return the transformed formula
     */
   private def connectFormulasForAnyIter(
-      formulas: List[SREFormula],
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                         formulas: List[SREFormula],
+                                         trueFormula: SRETrueSentence
+                                       ): SREFormula = {
     // R' = R;(T*;R)* + epsilon
     require(formulas.size == 1)
     val r = formulas.head
@@ -219,7 +221,7 @@ object SelectionUtils {
     val rightSubformula = SREOperator(RegularOperator.SEQ, List(trueStar, r))
     val subformulaStar = SREOperator(RegularOperator.ITER, List(rightSubformula))
     val rprimeNoEpsilon = SREOperator(RegularOperator.SEQ, List(r, subformulaStar))
-    val rprime = SREOperator(RegularOperator.CHOICE, List(new SRETrueSentence, rprimeNoEpsilon))
+    val rprime = SREOperator(RegularOperator.CHOICE, List(new SREEpsilonSentence, rprimeNoEpsilon))
     rprime
   }
 
@@ -231,9 +233,9 @@ object SelectionUtils {
     * @return the transformed formula
     */
   private def connectFormulasForNextIter(
-      formulas: List[SREFormula],
-      trueFormula: SRETrueSentence
-  ): SREFormula = {
+                                          formulas: List[SREFormula],
+                                          trueFormula: SRETrueSentence
+                                        ): SREFormula = {
     require(formulas.size == 1)
     val r = formulas.head
     // T*
@@ -251,7 +253,7 @@ object SelectionUtils {
     // R;( !(T*;R;T*) ;R)*
     val rprimeNoEpsilon = SREOperator(RegularOperator.SEQ, List(r, iteratedSubformula))
     // R;( !(T*;R;T*) ;R)* + epsilon
-    val rprime = SREOperator(RegularOperator.CHOICE, List(new SRETrueSentence, rprimeNoEpsilon))
+    val rprime = SREOperator(RegularOperator.CHOICE, List(new SREEpsilonSentence, rprimeNoEpsilon))
     rprime
   }
 
@@ -263,9 +265,9 @@ object SelectionUtils {
     * @return a new formula
     */
   private def connectFormulasWithOperator(
-      formulas: List[SREFormula],
-      op: RegularOperator
-  ): SREFormula = {
+                                           formulas: List[SREFormula],
+                                           op: RegularOperator
+                                         ): SREFormula = {
     require(formulas.size >= 2)
     require(op == RegularOperator.SEQ | op == RegularOperator.CHOICE)
     connectFormulasWithOperator(formulas.tail, formulas.head, op)
@@ -273,10 +275,10 @@ object SelectionUtils {
 
   @scala.annotation.tailrec
   private def connectFormulasWithOperator(
-      formulas: List[SREFormula],
-      connectedFormula: SREFormula,
-      op: RegularOperator
-  ): SREFormula = {
+                                           formulas: List[SREFormula],
+                                           connectedFormula: SREFormula,
+                                           op: RegularOperator
+                                         ): SREFormula = {
     formulas match {
       case Nil => connectedFormula
       case head :: tail => {

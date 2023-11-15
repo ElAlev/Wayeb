@@ -1,7 +1,7 @@
 package fsm.symbolic.sfa.sdfa
 
-import fsm.symbolic.sfa.Transition
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.SFATransition
 
 object SDFAStateMutant {
   /**
@@ -24,13 +24,13 @@ class SDFAStateMutant private[sdfa] (val id: Int) {
   // fsm.symbolic.sfa.sdfa.SDFAStateMutant.addNext and fsm.symbolic.sfa.sdfa.SDFAStateMutant.addPrevious.
 
   // the set of next states
-  private val next = collection.mutable.Set[(SDFAStateMutant, Transition)]()
+  private val next = collection.mutable.Set[(SDFAStateMutant, SFATransition)]()
   // the set of previous states
-  private val previous = collection.mutable.Set[(SDFAStateMutant, Transition)]()
+  private val previous = collection.mutable.Set[(SDFAStateMutant, SFATransition)]()
 
-  def addNext(new_next: (SDFAStateMutant, Transition)): Unit = next += new_next
+  def addNext(new_next: (SDFAStateMutant, SFATransition)): Unit = next += new_next
 
-  def addPrevious(new_previous: (SDFAStateMutant, Transition)): Unit = previous += new_previous
+  def addPrevious(new_previous: (SDFAStateMutant, SFATransition)): Unit = previous += new_previous
 
   def removeNext(
                   str: SDFAStateMutant,
@@ -51,19 +51,19 @@ class SDFAStateMutant private[sdfa] (val id: Int) {
   def getNext(s: Sentence): collection.mutable.Set[SDFAStateMutant] =
     next.filter(el => el._2.guard.sentence == s).map(el1 => el1._1)
 
-  def getNext: collection.mutable.Set[(SDFAStateMutant, Transition)] = next
+  def getNext: collection.mutable.Set[(SDFAStateMutant, SFATransition)] = next
 
-  def getPrevious: collection.mutable.Set[(SDFAStateMutant, Transition)] = previous
+  def getPrevious: collection.mutable.Set[(SDFAStateMutant, SFATransition)] = previous
 
 /**************************************/
   /** Methods below not currently used **/
 /**************************************/
 
   @deprecated
-  def addNext(new_next: collection.mutable.Set[(SDFAStateMutant, Transition)]): Unit = next ++= new_next
+  def addNext(new_next: collection.mutable.Set[(SDFAStateMutant, SFATransition)]): Unit = next ++= new_next
 
   @deprecated
-  def addPrevious(new_previous: collection.mutable.Set[(SDFAStateMutant, Transition)]): Unit = previous ++= new_previous
+  def addPrevious(new_previous: collection.mutable.Set[(SDFAStateMutant, SFATransition)]): Unit = previous ++= new_previous
 
   @deprecated
   def removeNext(r: Sentence): Unit = {

@@ -2,7 +2,7 @@ package model.forecaster.runtime
 
 import com.typesafe.scalalogging.LazyLogging
 import fsm.runtime.{RunListener, RunMessage}
-import model.forecaster.{ForecasterInterface, ForecasterType}
+import model.forecaster.{HMMInterface, NextInterface, ForecasterInterface, ForecasterType}
 import profiler.ForecastCollector
 import profiler.classification.ClassificationForecastCollector
 import profiler.regression.RegressionForecastCollector
@@ -18,10 +18,11 @@ object ForecasterRun {
     * @return A predictor run.
     */
   def apply(
+             id: Int,
              pi: ForecasterInterface,
              collectStats: Boolean,
              finalsEnabled: Boolean
-           ): ForecasterRun = new ForecasterRun(pi, collectStats, finalsEnabled)
+           ): ForecasterRun = new ForecasterRun(id, pi, collectStats, finalsEnabled)
 }
 
 /**
@@ -35,6 +36,7 @@ object ForecasterRun {
   * @param finalsEnabled If true, final states are also allowed to emit forecasts.
   */
 class ForecasterRun(
+                     id: Int,
                      pi: ForecasterInterface,
                      collectStats: Boolean,
                      finalsEnabled: Boolean
@@ -54,7 +56,16 @@ class ForecasterRun(
     */
   def newEventProcessed(rm: RunMessage): Unit = {
     if (rm.isReset) collector.reset()
-    else prediction = tryPredict(rm)
+    else {
+      pi match {
+        case x: NextInterface => prediction = x.getNewForecast(rm.currentState, rm.eventCounter)
+        case x: HMMInterface => {
+          x.addObservation(rm.currentState)
+          prediction = tryPredict(rm)
+        }
+        case _ => prediction = tryPredict(rm)
+      }
+    }
   }
 
   /**
@@ -79,7 +90,12 @@ class ForecasterRun(
         }
       }
     if (pred.isValid & rm.show) {
-      logger.info("PREDICTION@" + rm.timestamp + ":Attr->" + rm.attributeValue + "|State->" + rm.currentState + "|" + pred.toString)
+      val msg =
+        "PREDICTION@" + rm.timestamp +
+          ":Attr->" + rm.attributeValue +
+          "|" + pred.toString //+
+        //"\nFORECAST:" + pred.isPositive + "," + rm.lastEvent.getValueOf("positive")
+      logger.info(msg)
     }
     if (collectStats) collector.collect(rm, pred)
     pred
@@ -87,9 +103,9 @@ class ForecasterRun(
 
   def shutdown(): Unit = {}
 
-  override def cloneForecaster: ForecasterRun = ForecasterRun(pi, collectStats, finalsEnabled)
+  override def cloneForecaster(newId: Int): ForecasterRun = ForecasterRun(newId, pi, collectStats, finalsEnabled)
 
-  override def getId: Int = pi.getId
+  override def getInterfaceId: Int = pi.getId
 
   def getCollector: ForecastCollector = collector
 

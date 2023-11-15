@@ -3,6 +3,7 @@ package stream.source
 import stream.source.EmitMode.EmitMode
 import stream.GenericEvent
 import stream.array.EventStream
+import ui.ConfigUtils
 
 /**
   * A stream to be consumed is first wrapped inside a stream source.
@@ -59,16 +60,29 @@ abstract class StreamSource {
     */
   private def sendEndOfStream(): Unit = send2Listeners(new EndOfStreamEvent)
 
+  final def emitEventsAndClose(mode: EmitMode): EventStream = {
+    emitEventsAndClose(mode, ConfigUtils.defaultTimeout)
+  }
+
   /**
     * Emits all events in the stream. If the mode is ONLINE, also sends an end-of-stream final event.
     *
     * @param mode The mode.
+    * @param timeout The time (in seconds) the source is allowed to run. After the timeout, the source should stop
+    *                emitting events.
     * @return The event stream as an array (typically empty if mode is ONLINE).
     */
-  final def emitEventsAndClose(mode: EmitMode): EventStream = {
-    val es = emitEvents(mode)
+  final def emitEventsAndClose(
+                                mode: EmitMode,
+                                timeout: Long
+                              ): EventStream = {
+    val es = emitEvents(mode, timeout)
     if (mode == EmitMode.ONLINE) sendEndOfStream()
     es
+  }
+
+  final def emitEventsToListener(listener: StreamListener): EventStream = {
+    emitEventsToListener(listener, ConfigUtils.defaultTimeout)
   }
 
   /**
@@ -77,11 +91,17 @@ abstract class StreamSource {
     * first listener, then the second, etc.
     *
     * @param listener The listener.
+    * @param timeout  The time (in seconds) the source is allowed to run. After the timeout, the source should stop
+    *                 emitting events.
+    *
     * @return The event stream as an array, typically empty.
     */
-  final def emitEventsToListener(listener: StreamListener): EventStream = {
+  final def emitEventsToListener(
+                                  listener: StreamListener,
+                                  timeout: Long
+                                ): EventStream = {
     val registrationId = this.register (listener)
-    val es = emitEventsAndClose (EmitMode.ONLINE)
+    val es = emitEventsAndClose (EmitMode.ONLINE, timeout)
     this.unregister (registrationId)
     es
   }
@@ -95,8 +115,14 @@ abstract class StreamSource {
     * NOT FEASIBLE for unbounded streams.
     *
     * @param mode The mode, BUFFER or ONLINE.
+    * @param timeout The time (in seconds) the source is allowed to run. After the timeout, the source should stop
+    *                emitting events.
+    *
     * @return The stream as an array of events.
     */
-  protected def emitEvents(mode: EmitMode): EventStream
+  protected def emitEvents(
+                            mode: EmitMode,
+                            timeout: Long
+                          ): EventStream
 
 }

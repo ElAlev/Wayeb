@@ -1,10 +1,11 @@
 package fsm.symbolic.sfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.logic.{EpsilonSentence, LogicUtils, Predicate, Sentence}
+import fsm.symbolic.StateMapper
+import fsm.symbolic.logic.{EpsilonSentence, LogicUtils, Predicate, Sentence}
 import fsm.symbolic.sfa.sdfa.{SDFA, SDFAState}
 import fsm.symbolic.sfa.snfa.SNFA
-import fsm.symbolic.sfa.Constants.deadId
+import fsm.symbolic.Constants.deadStateIdConstant
 
 /**
   * An incremental way to determinize a SNFA without first creating the power-set of its states.
@@ -43,10 +44,10 @@ object DeterminizerIncr extends LazyLogging {
     var t2 = System.nanoTime()
     logger.debug(minTerms.size + " min-terms built in " + (t2 - t1) / 1000000.0 + " ms.")
     t1 = System.nanoTime()
-    val stateMapping = new StateMapperI(snfa)
+    val stateMapping = StateMapper(snfa) //new StateMapperI(snfa)
     logger.debug("Creating states and transitions for SDFA")
     val frontStates = Set(stateMapping.getStartId)
-    val statesNtransitions = expand(frontStates, Set(stateMapping.getStartId), List.empty[Transition], snfa, stateMapping, exclusives, minTerms)
+    val statesNtransitions = expand(frontStates, Set(stateMapping.getStartId), List.empty[SFATransition], snfa, stateMapping, exclusives, minTerms)
     val states = statesNtransitions._1.map(s => (s, SDFAState(s))).toMap
     val transitions = statesNtransitions._2
     val finals = states.keySet.filter(id => stateMapping.getAsSet(id).intersect(snfa.finals).nonEmpty)
@@ -76,12 +77,12 @@ object DeterminizerIncr extends LazyLogging {
   private def expand(
                       frontStates: Set[Int],
                       states: Set[Int],
-                      transitions: List[Transition],
+                      transitions: List[SFATransition],
                       snfa: SNFA,
-                      smi: StateMapperI,
+                      smi: StateMapper,
                       exclusives: Set[Set[Predicate]],
                       sentences: Set[Sentence]
-                    ): (Set[Int], List[Transition]) = {
+                    ): (Set[Int], List[SFATransition]) = {
     val fsl = frontStates.toList
     fsl match {
       case Nil => (states, transitions)
@@ -89,7 +90,7 @@ object DeterminizerIncr extends LazyLogging {
         val st = getNewStatesAndTransitionsFromSource(snfa, head, smi, exclusives, sentences)
         val newStatesFromSource = st._1
         val newTransitionsFromSource = st._2
-        val newFrontStates = tail.toSet ++ newStatesFromSource.filter(ns => !states.contains(ns))
+        val newFrontStates = tail.toSet ++ newStatesFromSource.diff(states)
         val newStates = states ++ newStatesFromSource
         val newTransitions = transitions ::: newTransitionsFromSource
         expand(newFrontStates, newStates, newTransitions, snfa, smi, exclusives, sentences)
@@ -111,10 +112,10 @@ object DeterminizerIncr extends LazyLogging {
   private def getNewStatesAndTransitionsFromSource(
                                                     snfa: SNFA,
                                                     source: Int,
-                                                    smi: StateMapperI,
+                                                    smi: StateMapper,
                                                     exclusives: Set[Set[Predicate]],
                                                     sentences: Set[Sentence]
-                                                  ): (Set[Int], List[Transition]) = {
+                                                  ): (Set[Int], List[SFATransition]) = {
     val st = sentences.map(s => getNewStatesAndTransitionsFromSource(snfa, source, smi, exclusives, s)).toList
     val newStates = st.map(s => s._1).toSet
     val newTransitions = st.map(s => s._2)
@@ -138,67 +139,16 @@ object DeterminizerIncr extends LazyLogging {
   private def getNewStatesAndTransitionsFromSource(
                                                     snfa: SNFA,
                                                     source: Int,
-                                                    smi: StateMapperI,
+                                                    smi: StateMapper,
                                                     exclusives: Set[Set[Predicate]],
                                                     sentence: Sentence
-                                                  ): (Int, Transition) = {
+                                                  ): (Int, SFATransition) = {
     val sourceSet = smi.getAsSet(source)
     val successors = snfa.getSuccessorsFromGraph(sourceSet, sentence, exclusives)
     val enclosedSuccessors = snfa.encloseFromGraph(successors)
     val target = smi.addNewDetState(enclosedSuccessors)
-    val transition = Transition(source, target, Guard(sentence))
+    val transition = SFATransition(source, target, SFAGuard(sentence))
     (target, transition)
   }
 
-  /**
-    * Keeps track of the states of the SDFA as it is built and their correspondence to sets of states of the SNFA.
-    * Think of it as an incremental version of fsm.symbolic.sfa.Determinizer.StateMapper.
-    *
-    * @param snfa The original SNFA.
-    */
-  private class StateMapperI(snfa: SNFA) {
-    private val startId = 0
-    private val qdStart = snfa.encloseFromGraph(snfa.start)
-    // a mapping of SDFA states as unique ids to SDFA states as sets
-    private val id2set = collection.mutable.Map[Int, Set[Int]](deadId -> Set.empty[Int], startId -> qdStart)
-    // a mapping of SDFA states as sets to SDFA states as unique ids
-    private val set2id = collection.mutable.Map[Set[Int], Int](Set.empty[Int] -> deadId, qdStart -> startId)
-    private var maxId = 0
-
-    /**
-      * Adds a new SDFA state id.
-      *
-      * @param state The new state as a set of SNFA states.
-      * @return The id of the new SDFA state.
-      */
-    def addNewDetState(state: Set[Int]): Int = {
-      if (set2id.contains(state)) set2id(state)
-      else {
-        val newStateId = maxId + 1
-        id2set.update(newStateId, state)
-        set2id.update(state, newStateId)
-        maxId = newStateId
-        newStateId
-      }
-    }
-
-    /**
-      * Returns the set of SNFA states corresponding to the id of the SDFA state.
-      *
-      * @param state The id of the SDFA state.
-      * @return The corresponding set of SNFA states.
-      */
-    def getAsSet(state: Int): Set[Int] = id2set(state)
-
-    /**
-      * Returns the id of the SDFA state corresponding to the set of SNFA states.
-      *
-      * @param set The set of SNFA states.
-      * @return The corresponding id of the SDFA state.
-      */
-    def getAsId(set: Set[Int]): Int = set2id(set)
-
-    def getStartId: Int = startId
-
-  }
 }

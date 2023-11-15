@@ -1,15 +1,17 @@
 package workflow.provider
 
 import java.io.{FileInputStream, ObjectInputStream}
+
 import fsm.DFAInterface
 import fsm.classical.fa.dfa.{DFA, DFAFactory}
 import fsm.symbolic.sfa.sdfa.SDFA
 import fsm.CountPolicy.CountPolicy
 import fsm.classical.pattern.regexp.RegExpTree
 import fsm.classical.pattern.regexp.RegExpUtils.{getPatternSigmaStar, xml2re}
+import model.vmm.mapper.Isomorphism
 import ui.ConfigUtils
 import workflow.condition.{Condition, FileExistsCondition}
-import workflow.provider.source.dfa.{DFASource, DFASourceDirect, DFASourceFromXML, DFASourceRegExp, DFASourceSerialized}
+import workflow.provider.source.dfa.{DFASource, DFASourceDirect, DFASourceFromSDFA, DFASourceFromXML, DFASourceRegExp, DFASourceSerialized}
 
 object DFAProvider {
   /**
@@ -50,6 +52,14 @@ object DFAProvider {
   def apply(dfaSource: DFASourceSerialized): DFAProvider =
     new DFAProvider(dfaSource, List(new FileExistsCondition(dfaSource.fn)))
 
+  /**
+    * Constructor for DFA provider when dfaSource is workflow.provider.source.dfa.DFASourceFromSDFA.
+    * The source contains a SDFA and an isomorphism based on which a structurally equivalent DFA will be constructed.
+    *
+    * @param dfaSource A workflow.provider.source.dfa.DFASourceFromSDFA.
+    * @return A DFA provider.
+    */
+  def apply(dfaSource: DFASourceFromSDFA): DFAProvider = new DFAProvider(dfaSource, List.empty)
 }
 
 /**
@@ -85,6 +95,7 @@ class DFAProvider private (
       case x: DFASourceRegExp => re2dfa(x.re, x.policy, x.order, x.streamSymbols, x.partitionAttribute)
       case x: DFASourceFromXML => xml2dfa(x.xmlFile, x.policy, x.order, x.streamSymbols)
       case x: DFASourceSerialized => deserialize(x.fn)
+      case x: DFASourceFromSDFA => sdfa2dfa(x.sdfa, x.iso)
       case _ => throw new Error("Not valid DFASource")
     }
   }
@@ -160,6 +171,21 @@ class DFAProvider private (
     dfa
   }
 
+  /**
+    * Converts a SDFA to a DFA through an isomorphism.
+    *
+    * @param sdfa The given SDFA.
+    * @param iso The given isomorphism.
+    * @return The structurally equivalent DFA.
+    */
+  private def sdfa2dfa(
+                        sdfa: SDFA,
+                        iso: Isomorphism
+                      ): List[DFAInterface] = {
+    val dfa = DFAFactory.buildDFAFromSDFA(sdfa, iso)
+    val dfai = DFAInterface(dfa, 0, ConfigUtils.singlePartitionVal)
+    List(dfai)
+  }
 
   /**
     * Checks all conditions.

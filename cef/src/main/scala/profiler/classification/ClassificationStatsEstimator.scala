@@ -91,14 +91,14 @@ class ClassificationStatsEstimator(collectors: List[ClassificationForecastCollec
     val informedness = totalMetrics._7
     val mcc = totalMetrics._8
     logger.info("\n***** FORECASTING STATS *****\n")
-    logger.info("\tPrecision: " + precision)
-    logger.info("\tNegative predictive value (precision of other class): " + npv)
-    logger.info("\tRecall: " + recall)
-    logger.info("\tSpecificity (recall of other class): " + specificity)
-    logger.info("\tF1: " + f1)
-    logger.info("\tAccuracy: " + accuracy)
-    logger.info("\tInformedness: " + informedness)
-    logger.info("\tMatthews correlation coefficient: " + mcc)
+    logger.info("\tPrecision: " + "%.3f".format(precision))
+    logger.info("\tNegative predictive value (precision of other class): " + "%.3f".format(npv))
+    logger.info("\tRecall: " + "%.3f".format(recall))
+    logger.info("\tSpecificity (recall of other class): " + "%.3f".format(specificity))
+    logger.info("\tF1: " + "%.3f".format(f1))
+    logger.info("\tAccuracy: " + "%.3f".format(accuracy))
+    logger.info("\tInformedness: " + "%.3f".format(informedness))
+    logger.info("\tMatthews correlation coefficient: " + "%.3f".format(mcc))
     logger.info("\tCounts (tp/tn/fp/fn): " + totalCounts)
   }
 

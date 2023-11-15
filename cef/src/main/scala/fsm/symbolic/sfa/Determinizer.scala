@@ -1,8 +1,8 @@
 package fsm.symbolic.sfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.Constants.deadId
-import fsm.symbolic.sfa.logic.{EpsilonSentence, LogicUtils, Predicate, Sentence}
+import fsm.symbolic.logic.{EpsilonSentence, LogicUtils, Predicate, Sentence}
+import fsm.symbolic.Constants.deadStateIdConstant
 import fsm.symbolic.sfa.sdfa.{SDFA, SDFAState}
 import fsm.symbolic.sfa.snfa.SNFA
 
@@ -47,10 +47,10 @@ object Determinizer extends LazyLogging {
       toList.flatten
     logger.debug("Creating states")
     val normalStates = ids.map(id => (id, SDFAState(id))).toMap
-    val hasDead = normalTransitions.exists(t => t.target == deadId)
+    val hasDead = normalTransitions.exists(t => t.target == deadStateIdConstant)
     // if the transitions need a dead state, then we create such a state and add it
-    val states = if (hasDead) normalStates + (deadId -> SDFAState(deadId)) else normalStates
-    // similarly, of we have a dead state, we need to create self-loop transitions on the dead state with all minterms
+    val states = if (hasDead) normalStates + (deadStateIdConstant -> SDFAState(deadStateIdConstant)) else normalStates
+    // similarly, if we have a dead state, we need to create self-loop transitions on the dead state with all minterms
     val transitions = //if (hasDead) Transition(deadId,deadId,Guard(SentenceConstructor.getNewTrueSentence))::normalTransitions
       if (hasDead) deadTransitions(minTerms) ::: normalTransitions
       else normalTransitions
@@ -58,10 +58,10 @@ object Determinizer extends LazyLogging {
     val start = stateMapping.getAsId(snfa.enclose(snfa.start))
     // a SDFA state is final if one of its members is final in the SNFA
     val finals = ids.filter(id => stateMapping.getAsSet(id).intersect(snfa.finals).nonEmpty)
-    val sdfa = SDFA(states, transitions, start, finals)
+    val sdfa = renameDeadAsPositive(states, transitions, start, finals)//SDFA(states, transitions, start, finals)
     logger.debug("Initial SDFA has " + sdfa.states.size + " states and " + sdfa.transitions.size + " transitions")
     logger.debug("Removing inaccessible states")
-    // using the powerset method may result in the create of some inaccessible state which we need to remove
+    // using the powerset method may result in the creation of some inaccessible state which we need to remove
     val accessSdfa = removeInaccessible(sdfa)
     t2 = System.nanoTime()
     logger.debug("Final SDFA has " + accessSdfa.states.size + " states and " + accessSdfa.transitions.size + " transitions")
@@ -70,14 +70,35 @@ object Determinizer extends LazyLogging {
     accessSdfa
   }
 
+  private def renameDeadAsPositive(
+                                    states: Map[Int, SDFAState],
+                                    transitions: List[SFATransition],
+                                    start: Int,
+                                    finals: Set[Int]
+                                  ): SDFA = {
+    val newDeadId = states.keySet.max + 1
+    val newStates = states.map(state => {
+      if (state._1 == deadStateIdConstant) (newDeadId, SDFAState(newDeadId))
+      else state
+    })
+    val newTransitions = transitions.map(t => {
+      val newSource = if (t.source == deadStateIdConstant) newDeadId else t.source
+      val newTarget = if (t.target == deadStateIdConstant) newDeadId else t.target
+      SFATransition(newSource, newTarget, t.guard.asInstanceOf[SFAGuard], t.output)
+    })
+    val newStart = if (start == deadStateIdConstant) newDeadId else start
+    val newFinals = finals.map(f => if (f == deadStateIdConstant) newDeadId else f)
+    SDFA(newStates, newTransitions, newStart, newFinals)
+  }
+
   /**
     * For every minterm, creates a self-loop transition on the dead state.
     *
     * @param minterms The minterms.
     * @return The self-loop transitions on the dead state.
     */
-  private def deadTransitions(minterms: Set[Sentence]): List[Transition] =
-    minterms.toList.map(s => Transition(deadId, deadId, Guard(s)))
+  private def deadTransitions(minterms: Set[Sentence]): List[SFATransition] =
+    minterms.toList.map(s => SFATransition(deadStateIdConstant, deadStateIdConstant, SFAGuard(s)))
 
   /**
     * Removes every inaccessible state, along with any transitions associated with inaccessible states.
@@ -112,7 +133,7 @@ object Determinizer extends LazyLogging {
                                         sm: StateMapper,
                                         exclusives: Set[Set[Predicate]],
                                         sentences: Set[Sentence]
-                                      ): List[Transition] = {
+                                      ): List[SFATransition] = {
     // One transition for each sentence.
     sentences.map(s => getNewTransition(snfa, source, sm, exclusives, s)).toList
   }
@@ -133,7 +154,7 @@ object Determinizer extends LazyLogging {
                                 sm: StateMapper,
                                 exclusives: Set[Set[Predicate]],
                                 sentence: Sentence
-                              ): Transition = {
+                              ): SFATransition = {
     // find the source state as set of SNFA states
     val se = sm.getAsSet(source)
     // get all successor states with the given sentence
@@ -142,8 +163,8 @@ object Determinizer extends LazyLogging {
     val enclosedSuccessors = snfa.enclose(successors)
     // if enclosure is empty, this means that there is no next state with the given sentence, so the transition should
     // go to the dead state
-    val target = if (enclosedSuccessors.isEmpty) deadId else sm.getAsId(enclosedSuccessors)
-    Transition(source, target, Guard(sentence))
+    val target = if (enclosedSuccessors.isEmpty) deadStateIdConstant else sm.getAsId(enclosedSuccessors)
+    SFATransition(source, target, SFAGuard(sentence))
   }
 
   /**
@@ -165,7 +186,7 @@ object Determinizer extends LazyLogging {
     //      But does not seem to be the case here. Filtering keeps inaccessible. Check it.
     private val qd: Set[Set[Int]] = utils.SetUtils.power(qe).filter(q => snfa.enclose(q) == q)
     // create the unique ids for the SDFA states
-    private val idsFromIdg = for (q <- qd) yield idg.getId
+    private val idsFromIdg = for (q <- qd) yield idg.getIdCautiousImmut
     // a mapping of SDFA states as sets to SDFA states as unique ids
     private val stateMapping: List[(Set[Int], Int)] = qd.toList.zip(idsFromIdg.toList)
     private val set2Id: Map[Set[Int], Int] = stateMapping.toMap

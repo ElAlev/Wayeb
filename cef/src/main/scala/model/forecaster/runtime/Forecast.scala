@@ -80,7 +80,7 @@ class Forecast private[runtime](
     middle >= start - ConfigUtils.intervalTolerance & middle <= end + ConfigUtils.intervalTolerance,
     "start,end,middle " + start + "," + end + "," + middle + " not valid"
   )
-  require((prob >= 0.0 & prob <= 1.0) | (prob == -1.0 & start == -1), "Prob " + prob + " not valid")
+  require((prob >= -0.0001 & prob <= 1.0001) | (prob == -1.0 & start == -1), "Prob " + prob + " not valid")
   override def toString: String = start + "," + end + "," + middle + "," + prob + "," + positive
 
   def isValid: Boolean = start != -1

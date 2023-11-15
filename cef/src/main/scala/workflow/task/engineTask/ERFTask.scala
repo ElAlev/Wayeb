@@ -44,7 +44,8 @@ object ERFTask {
     distance,
     streamSource,
     collectStats,
-    show
+    show,
+    false
   )
 
   /**
@@ -72,7 +73,8 @@ object ERFTask {
     distance       = ConfigUtils.defaultDistance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show = ConfigUtils.defaultShowMatchesForecasts
+    show = ConfigUtils.defaultShowMatchesForecasts,
+    reset = false
   )
 
   /**
@@ -99,7 +101,8 @@ object ERFTask {
     distance         = ConfigUtils.defaultDistance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show
+    show,
+    reset = false
   )
 
   /**
@@ -126,7 +129,8 @@ object ERFTask {
     distance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show = ConfigUtils.defaultShowMatchesForecasts
+    show = ConfigUtils.defaultShowMatchesForecasts,
+    reset = false
   )
 
   /**
@@ -160,7 +164,8 @@ object ERFTask {
     distance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show = ConfigUtils.defaultShowMatchesForecasts
+    show = ConfigUtils.defaultShowMatchesForecasts,
+    reset = false
   )
 
 
@@ -170,11 +175,12 @@ object ERFTask {
     *
     * @param fsmp The provider for the FSM.
     * @param streamSource The source for the event stream.
-    * @return
+    * @return An ERF task.
     */
   def apply(
              fsmp: FSMProvider,
-             streamSource: StreamSource
+             streamSource: StreamSource,
+             reset: Boolean
            ): ERFTask = new ERFTask(
     fsmp,
     ForecasterProvider(new ForecasterSourceRandom(fsmp, 1)),
@@ -184,7 +190,32 @@ object ERFTask {
     distance = ConfigUtils.defaultDistance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show = ConfigUtils.defaultShowMatchesForecasts
+    show = ConfigUtils.defaultShowMatchesForecasts,
+    reset
+  )
+
+  /**
+   * Constructor for ERF task. To be used for recognition. Forecasting is disabled.
+   * Default value for expirationDeadline, collectStats.
+   *
+   * @param fsmp         The provider for the FSM.
+   * @param streamSource The source for the event stream.
+   * @return An ERF task.
+   */
+  def apply(
+             fsmp: FSMProvider,
+             streamSource: StreamSource
+           ): ERFTask = new ERFTask(
+    fsmp,
+    ForecasterProvider(new ForecasterSourceRandom(fsmp, 1)),
+    predictorEnabled = false,
+    finalsEnabled = false,
+    expirationDeadline = ConfigUtils.defaultExpiration,
+    distance = ConfigUtils.defaultDistance,
+    streamSource,
+    collectStats = ConfigUtils.defaultCollectStats,
+    show = ConfigUtils.defaultShowMatchesForecasts,
+    reset = false
   )
 
   /**
@@ -194,12 +225,13 @@ object ERFTask {
     * @param fsmp The provider for the FSM.
     * @param streamSource The source for the event stream.
     * @param show Determines whether complex event matches and forecasts are to be displayed or not.
-    * @return
+    * @return An ERF task.
     */
   def apply(
              fsmp: FSMProvider,
              streamSource: StreamSource,
-             show: Boolean
+             show: Boolean,
+             reset: Boolean
            ): ERFTask = new ERFTask(
     fsmp,
     ForecasterProvider(new ForecasterSourceRandom(fsmp, 1)),
@@ -209,7 +241,8 @@ object ERFTask {
     distance = ConfigUtils.defaultDistance,
     streamSource,
     collectStats = ConfigUtils.defaultCollectStats,
-    show
+    show,
+    reset = false
   )
 }
 
@@ -236,11 +269,12 @@ class ERFTask private (
                         distance: (Double, Double),
                         streamSource: StreamSource,
                         collectStats: Boolean,
-                        show: Boolean
+                        show: Boolean,
+                        reset: Boolean
                       ) extends Task with LazyLogging {
 
   private val engine =
-    ERFEngine(fsmp, pp, predictorEnabled, expirationDeadline, collectStats, finalsEnabled, distance, show)
+    ERFEngine(fsmp, pp, predictorEnabled, expirationDeadline, collectStats, finalsEnabled, distance, show, reset)
 
   /**
     * Sends events to the engine.

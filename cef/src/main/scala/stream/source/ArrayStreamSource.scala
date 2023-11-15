@@ -17,10 +17,15 @@ class ArrayStreamSource(eventStream: EventStream) extends StreamSource {
   /**
     * For BUFFER mode, simply return the array. For ONLINE, send all events to listeners.
     *
-    * @param mode The mode, BUFFER or ONLINE.
+    * @param mode     The mode, BUFFER or ONLINE.
+    * @param timeout  The time (in seconds) the source is allowed to run. After the timeout, the source should stop
+    *                 emitting events. Irrelevant here.
     * @return The stream as an array of events.
     */
-  override protected def emitEvents(mode: EmitMode): EventStream = {
+  override protected def emitEvents(
+                                     mode: EmitMode,
+                                     timeout: Long
+                                   ): EventStream = {
     mode match {
       case EmitMode.BUFFER => eventStream
       case EmitMode.ONLINE => {

@@ -6,7 +6,9 @@ import org.locationtech.jts.geom.Coordinate
   * Utils for geospatial functions.
   */
 object SpatialUtils {
-  final private val earthRadius: Double = 6371.0 * 1000 // meters
+  final private val earthRadiusMeters: Double = 6371.0 * 1000 // meters
+  final private val earthRadiusKiloMeters: Double = 6371.0 // kilometers
+  final private val earthRadiusMiles: Double = 3959.0 // miles
 
   /**
     * Estimates the Harvesine distance between two points in kilometers.
@@ -116,7 +118,7 @@ object SpatialUtils {
     val a = (Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2)) +
       (Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLamda / 2) * Math.sin(deltaLamda / 2))
     val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    val d = earthRadius * c
+    val d = earthRadiusMeters * c
     d
   }
 
@@ -141,10 +143,20 @@ object SpatialUtils {
   /**
     * Projects a given point with given speed and heading timeOffset seconds into the future.
     *
+    * Given a start point, initial bearing, and distance, this will calculate the destination point and final bearing
+    * travelling along a (shortest distance) great circle arc.
+    *
+    * Formula: 	φ2 = asin( sin φ1 ⋅ cos δ + cos φ1 ⋅ sin δ ⋅ cos θ )
+    * λ2 = λ1 + atan2( sin θ ⋅ sin δ ⋅ cos φ1, cos δ − sin φ1 ⋅ sin φ2 )
+    * where 	φ is latitude, λ is longitude, θ is the bearing (clockwise from north),
+    * δ is the angular distance d/R; d being the distance travelled, R the earth’s radius
+    *
+    * See https://www.movable-type.co.uk/scripts/latlong.html
+    *
     * @param lon The point's longitude.
     * @param lat The point's latitude.
     * @param timeOffset The time offset in seconds.
-    * @param speed The vessel's speed.
+    * @param speed The vessel's speed (knots).
     * @param heading The vessel's heading.
     * @return (new longitude, new latitude)
     */
@@ -155,7 +167,10 @@ object SpatialUtils {
                     speed: Double,
                     heading: Double
                   ): (Double, Double) = {
-    val delta: Double = timeOffset * speed / 3600 / 6373
+    val secondsInAnHour = 3600
+    val distanceTravelledMiles = timeOffset * (speed / secondsInAnHour)
+    val distanceTravelledKiloMeters = distanceTravelledMiles * 1.852
+    val delta: Double =  distanceTravelledKiloMeters / earthRadiusKiloMeters.toInt
     val new_lat: Double = BigDecimal(Math.asin((Math.sin(lat.toRadians) * Math.cos(delta)) + (Math.cos(lat.toRadians) * Math.sin(delta) *
       Math.cos(heading.toRadians))).toDegrees).setScale(6, BigDecimal.RoundingMode.HALF_UP).toDouble
     val new_lon: Double = BigDecimal((lon.toRadians + Math.atan2(Math.sin(heading.toRadians) * Math.sin(delta) * Math.cos(lat.toRadians),

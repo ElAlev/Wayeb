@@ -43,7 +43,7 @@ trait DeclarationsParser extends JavaTokenParsers with SREParser {
 object ParseDeclarations extends DeclarationsParser {
   def main(args: Array[String]): Unit = {
     val home = System.getenv("WAYEB_HOME")
-    val fn = home + "/patterns/maritime/port/declarations.sre"
+    val fn = home + "/patterns/sre/test/declarations1.sre"
     val reader = new FileReader(fn)
     val parsed = parseAll(declarations, reader)
     val f = parsed.get

@@ -1,9 +1,12 @@
 package ui
 
 import java.nio.file.{Files, Paths}
-import fsm.CountPolicy
+import fsm.{CountPolicy, FSMModel}
 import model.waitingTime.ForecastMethod.ForecastMethod
 import CountPolicy.CountPolicy
+import fsm.FSMModel.FSMModel
+import model.ProbModel
+import model.ProbModel.ProbModel
 import model.waitingTime.ForecastMethod
 
 case class WayebConfig(
@@ -11,36 +14,56 @@ case class WayebConfig(
                         declarations: String = "",
                         outputFsm: String = "",
                         outputMc: String = "",
+                        outputSpst: String = "",
                         statsFile: String = "",
                         order: Int = ConfigUtils.defaultOrder,
                         confidenceThreshold: Double = ConfigUtils.defaultConfidenceThreshold,
                         maxSpread: Int = ConfigUtils.defaultMaxSpread,
                         horizon: Int = ConfigUtils.defaultHorizon,
-                        spreadMethod: ForecastMethod = ConfigUtils.defaultSpreadMethod,
+                        foreMethod: ForecastMethod = ConfigUtils.defaultForeMethod,
+                        maxNoStates: Int = ConfigUtils.maxNoStates,
+                        pMin: Double = ConfigUtils.defaultPMin,
+                        alpha: Double = ConfigUtils.defaultAlpha,
+                        gammaMin: Double = ConfigUtils.defaultGammaMin,
+                        r: Double = ConfigUtils.defaultR,
                         verbose: Boolean = ConfigUtils.defaultVerbose,
                         debug: Boolean = ConfigUtils.defaultDebug,
-                        isKafka: Boolean = ConfigUtils.defaultIsKafka,
                         kafkaConf: String = ConfigUtils.defaultKafkaConf,
                         streamFile: String = "",
                         domainSpecificStream: String = "",
                         streamArgs: String = "",
                         policy: CountPolicy = ConfigUtils.defaultPolicy,
                         expirationTime: Int = ConfigUtils.defaultExpiration,
-                        modelType: String = ConfigUtils.defaultModelType,
+                        probModel: ProbModel = ConfigUtils.defaultProbModel,
+                        fsmModel: FSMModel = ConfigUtils.defaultFsmModel,
                         fsmFile: String = "",
                         mcFile: String = "",
-                        task: String = "none"
+                        experimentsDomain: String = "cards",
+                        task: String = "none",
+                        reset: Boolean = false,
+                        recOpt: Boolean = false,
+                        warmupFirst: Boolean = ConfigUtils.warmupFirst,
+                        warmupStreamSize: Int = ConfigUtils.warmupStreamSize,
+                        findWarmupLimit: Boolean = ConfigUtils.findWarmupLimit,
+                        batchLength: Int = ConfigUtils.batchLength,
+                        measurements: Int = ConfigUtils.measurements,
+                        show: Boolean = ConfigUtils.defaultShowMatchesForecasts,
+                        postProcess: Boolean = ConfigUtils.defaultPostProcessMatches,
+                        timeout: Long = ConfigUtils.defaultTimeout,
+                        memoryTest: Boolean = ConfigUtils.defaultMemoryTest
 )
 
 object WayebCLI {
   def main(args: Array[String]): Unit = {
 
     val countPolicies = ConfigUtils.countPolicies
-    val modelTypes = ConfigUtils.modelTypes
-    val spreadMethods = ConfigUtils.spreadMethods
+    val probModels = ConfigUtils.probModels
+    val foreMethods = ConfigUtils.foreMethods
+    val fsmModels = ConfigUtils.fsmModels
+    val fsmModelsForecasting = ConfigUtils.fsmModelsForecasting
 
     val parser = new scopt.OptionParser[WayebConfig]("wayeb") {
-      head("Wayeb", "0.2")
+      head("Wayeb", "0.6")
 
       help("help").text("prints this usage text")
 
@@ -53,7 +76,7 @@ object WayebCLI {
             validate(x =>
               if (Files.exists(Paths.get(x))) success
               else failure("Pattern file does not exist")).
-            text("The SRE file for the patterns (required)."),
+            text("The SRE(M) file for the patterns (required)."),
           opt[String]("outputFsm").required().valueName("<file path>").
             action((x, c) => c.copy(outputFsm = x)).
             text("Output file for the compiled/disambiguated FSM."),
@@ -68,7 +91,13 @@ object WayebCLI {
             validate(x =>
               if (countPolicies.contains(x)) success
               else failure("Count policy should be one of " + countPolicies)).
-            text("Counting policy.")
+            text("Counting policy."),
+          opt[String]("fsmModel").valueName("One of " + fsmModels).
+            action((x, c) => c.copy(fsmModel = FSMModel.string2FSMModel(x))).
+            validate(x =>
+              if (fsmModels.contains(x)) success
+              else failure("FSM model should be one of " + fsmModels)).
+            text("Specify the automaton model.")
         )
 
       cmd("mle").
@@ -96,9 +125,6 @@ object WayebCLI {
           opt[String]("outputMc").required().valueName("<file path>").
             action((x, c) => c.copy(outputMc = x)).
             text("Output file for the calculated Markov Chain."),
-          opt[Boolean]("isKafka").valueName("Boolean").
-            action((x, c) => c.copy(isKafka = x)).
-            text("Whether the source originates from Kafka or not."),
           opt[String]("kafkaConf").valueName("<file path>").
             action((x, c) => c.copy(kafkaConf = x)).
             text("Specify the configuration file for Kafka")
@@ -108,24 +134,30 @@ object WayebCLI {
         action((_, c) => c.copy(task = "forecasting")).
         text("Process stream given a FSM and a learnt PMC (recognition and forecasting).").
         children(
-          opt[String]("modelType").required().valueName(modelTypes.toString()).
-            action((x, c) => c.copy(modelType = x)).
-            validate(x =>
-              if (modelTypes.contains(x)) success
-              else failure("FSM type should be one of " + modelTypes)).
-            text("FSM type."),
           opt[String]("fsm").required().valueName("<file path>").
             action((x, c) => c.copy(fsmFile = x)).
             validate(x =>
               if (Files.exists(Paths.get(x))) success
               else failure("FSM file does not exist")).
             text("FSM (serialized) to be used."),
+          opt[String]("fsmModel").valueName("One of " + fsmModelsForecasting).
+            action((x, c) => c.copy(fsmModel = FSMModel.string2FSMModel(x))).
+            validate(x =>
+              if (fsmModelsForecasting.contains(x)) success
+              else failure("FSM model should be one of " + fsmModelsForecasting)).
+            text("Specify the automaton model. Relevant only for VMMs."),
           opt[String]("mc").valueName("<file path>").
             action((x, c) => c.copy(mcFile = x)).
             validate(x =>
               if (Files.exists(Paths.get(x))) success
               else failure("MC file does not exist")).
-            text("Markov chain (serialized) to be used (only for FMMs)."),
+            text("Markov chain (serialized) to be used (relevant only for FMMs)."),
+          opt[String]("modelType").required().valueName(probModels.toString()).
+            action((x, c) => c.copy(probModel = ProbModel.string2ProbModel(x))).
+            validate(x =>
+              if (probModels.contains(x)) success
+              else failure("Model type should be one of " + probModels)).
+            text("Specify the type of the Markov model."),
           opt[String]("stream").required().valueName("<file path>").
             action((x, c) => c.copy(streamFile = x)).
             validate(x =>
@@ -151,15 +183,12 @@ object WayebCLI {
             action((x, c) => c.copy(horizon = x)).
             text("Horizon is the \"length\" of the waiting-time distributions, i.e., " +
               "for how may points into the future we want to calculate the completion probability."),
-          opt[String]("spreadMethod").valueName(spreadMethods.toString()).
-            action((x, c) => c.copy(spreadMethod = ForecastMethod.string2method(x))).
+          opt[String]("foreMethod").valueName(foreMethods.toString()).
+            action((x, c) => c.copy(foreMethod = ForecastMethod.string2method(x))).
             validate(x =>
-              if (spreadMethods.contains(x)) success
-              else failure("Spread method should be one of " + spreadMethods)).
-            text("Spread method."),
-          opt[Boolean]("isKafka").valueName("Boolean").
-            action((x, c) => c.copy(isKafka = x)).
-            text("Whether the source originates from Kafka or not."),
+              if (foreMethods.contains(x)) success
+              else failure("Forecasting method should be one of " + foreMethods)).
+            text("Forecasting method."),
           opt[String]("kafkaConf").valueName("<file path>").
             action((x, c) => c.copy(kafkaConf = x)).
             text("Specify the configuration file for Kafka")
@@ -178,7 +207,7 @@ object WayebCLI {
           opt[String]("stream").required().valueName("<file path>").
             action((x, c) => c.copy(streamFile = x)).
             validate(x =>
-              if (Files.exists(Paths.get(x))) success
+              if (Files.exists(Paths.get(x)) | x.equalsIgnoreCase("kafka")) success
               else failure("Stream file does not exist")).
             text("The input file with the stream of events (required)."),
           opt[String]("domainSpecificStream").valueName("<file path>").
@@ -190,9 +219,104 @@ object WayebCLI {
           opt[String]("statsFile").required().valueName("<file path>").
             action((x, c) => c.copy(statsFile = x)).
             text("Output file for statistics."),
-          opt[Boolean]("isKafka").valueName("Boolean").
-            action((x, c) => c.copy(isKafka = x)).
-            text("Whether the source originates from Kafka or not."),
+          opt[String]("kafkaConf").valueName("<file path>").
+            action((x, c) => c.copy(kafkaConf = x)).
+            text("Specify the configuration file for Kafka"),
+          opt[String]("fsmModel").valueName("One of " + fsmModels).
+            action((x, c) => c.copy(fsmModel = FSMModel.string2FSMModel(x))).
+            validate(x =>
+              if (fsmModels.contains(x)) success
+              else failure("FSM model should be one of " + fsmModels)).
+            text("Specify the automaton model."),
+          opt[Boolean]("reset").valueName("Boolean").
+            action((x, c) => c.copy(reset = x)).
+            text("Whether the engine should reset after every match."),
+          opt[Boolean]("opt").valueName("Boolean").
+            action((x, c) => c.copy(recOpt = x)).
+            text("Whether optimizations should be enabled."),
+          opt[Boolean]("warmupFirst").valueName("Boolean").
+            action((x, c) => c.copy(warmupFirst = x)).
+            text("Whether a warmup period should be used."),
+          opt[Int]("warmupStreamSize").valueName("Int >0").
+            action((x, c) => c.copy(warmupStreamSize = x)).
+            text("Warmup period in number of input events."),
+          opt[Boolean]("findWarmupLimit").valueName("Boolean").
+            action((x, c) => c.copy(findWarmupLimit = x)).
+            text("Whether this is to establish warmup period."),
+          opt[Int]("batchLength").valueName("Int >0").
+            action((x, c) => c.copy(batchLength = x)).
+            text("Length of batches for finding warmup limit."),
+          opt[Int]("measurements").valueName("Int >0").
+            action((x, c) => c.copy(measurements = x)).
+            text("Number of measurements for estimating throughput slope."),
+          opt[Boolean]("show").valueName("Boolean").
+            action((x, c) => c.copy(show = x)).
+            text("Show complete matches?"),
+          opt[Boolean]("postProcess").valueName("Boolean").
+            action((x, c) => c.copy(postProcess = x)).
+            text("Post-processing of complete matches?"),
+          opt[Long]("timeout").valueName("Int > 0").
+            action((x, c) => c.copy(timeout = x)).
+            text("Timeout in seconds."),
+          opt[Boolean]("mem").valueName("Boolean").
+            action((x, c) => c.copy(memoryTest = x)).
+            text("Memory test?"),
+        )
+
+      cmd("learnSPST").
+        action((_, c) => c.copy(task = "learnSPST")).
+        text("Learn symbolic probabilistic suffix automaton.").
+        children(
+          opt[String]("patterns").required().valueName("<file path>").
+            action((x, c) => c.copy(patterns = x)).
+            validate(x =>
+              if (Files.exists(Paths.get(x))) success
+              else failure("Pattern file does not exist")).
+            text("The SRE file for the patterns (required)."),
+          opt[String]("fsmModel").valueName("One of " + fsmModelsForecasting).
+            action((x, c) => c.copy(fsmModel = FSMModel.string2FSMModel(x))).
+            validate(x =>
+              if (fsmModelsForecasting.contains(x)) success
+              else failure("FSM model should be one of " + fsmModelsForecasting)).
+            text("Specify the automaton model."),
+          opt[Int]("pMin").valueName("pMin>0 and pMin<1.0").
+            action((x, c) => c.copy(pMin = x)).
+            text("This is the symbol threshold. Symbols with lower probability are discarded."),
+          opt[Int]("alpha").valueName("alpha>0 and alpha<1.0").
+            action((x, c) => c.copy(alpha = x)).
+            text("Used to calculate the conditional threshold = (1 + alpha) * gammaMin.\n" +
+              " The conditional on the expanded context must be greater than this threshold."),
+          opt[Int]("gammaMin").valueName("gammaMin>0 and gammaMin<1.0").
+            action((x, c) => c.copy(gammaMin = x)).
+            text("Used to calculate the conditional threshold = (1 + alpha) * gammaMin.\n" +
+              " The conditional on the expanded context must be greater than this threshold.\n" +
+              "Also used for smoothing."),
+          opt[Int]("r").valueName("r>0").
+            action((x, c) => c.copy(r = x)).
+            text("This is the likelihood ratio threshold.\n" +
+              "Contexts are expanded if the probability ratio of the conditional on the expanded context by the\n " +
+              " conditional on the original context is greater than this threshold."),
+          opt[String]("declarations").valueName("<file path>").
+            action((x, c) => c.copy(declarations = x)).
+            validate(x =>
+              if (Files.exists(Paths.get(x))) success
+              else failure("Declarations file does not exist")).
+            text("File declarations (if any)."),
+          opt[String]("stream").required().valueName("<file path>").
+            action((x, c) => c.copy(streamFile = x)).
+            validate(x =>
+              if (Files.exists(Paths.get(x))) success
+              else failure("Stream file does not exist")).
+            text("The input file with the training stream of events (required)."),
+          opt[String]("domainSpecificStream").valueName("<file path>").
+            action((x, c) => c.copy(domainSpecificStream = x)).
+            text("Specify the domain stream."),
+          opt[String]("streamArgs").valueName("<file path>").
+            action((x, c) => c.copy(streamArgs = x)).
+            text("Specify the domain stream arguments (comma separated)."),
+          opt[String]("outputSpst").required().valueName("<file path>").
+            action((x, c) => c.copy(outputSpst = x)).
+            text("Output file for the SPST."),
           opt[String]("kafkaConf").valueName("<file path>").
             action((x, c) => c.copy(kafkaConf = x)).
             text("Specify the configuration file for Kafka")
@@ -209,11 +333,13 @@ object WayebCLI {
 
   private def runWayeb(config: WayebConfig): Unit = {
     println(ConfigUtils.wayebLogo)
+    println(ConfigUtils.wayebAscii)
     config.task match {
-      case "compile" => BeepBeep.runFSMDisambiguation(config)
+      case "compile" => BeepBeep.runCompile2FSM(config)
       case "mle" => BeepBeep.runMatrixEstimation(config)
       case "forecasting" => BeepBeep.runForecasting(config)
       case "recognition" => BeepBeep.runRecognition(config)
+      case "learnSPST" => BeepBeep.runLearnSPST(config)
       case _ => throw new IllegalArgumentException("Unrecognized task.")
     }
   }

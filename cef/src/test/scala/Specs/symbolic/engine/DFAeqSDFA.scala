@@ -2,11 +2,11 @@ package Specs.symbolic.engine
 
 import com.typesafe.scalalogging.LazyLogging
 import fsm.symbolic.sre.SREUtils
-import fsm.symbolic.sfa.logic.PredicateConstructor
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatestplus.junit.JUnitRunner
 import fsm.CountPolicy.{NONOVERLAP, OVERLAP}
+import fsm.symbolic.logic.PredicateConstructor
 import stream.StreamFactory
 import stream.source.EmitMode
 import ui.ConfigUtils
@@ -15,6 +15,7 @@ import workflow.provider.source.dfa.DFASourceRegExp
 import workflow.provider.source.sdfa.SDFASourceFormula
 import workflow.provider.{DFAProvider, FSMProvider, SDFAProvider}
 import workflow.task.engineTask.ERFTask
+
 import scala.collection.mutable
 
 @RunWith(classOf[JUnitRunner])
@@ -51,7 +52,7 @@ class DFAeqSDFA extends FlatSpec with LazyLogging {
         val erf1 = ERFTask(fsmp1, ss)
 
         val sdfaProvider = SDFAProvider(
-          SDFASourceFormula(List((formula, order, partitionAttr)), policy, exclusive, Set.empty)
+          SDFASourceFormula(List((formula, order, partitionAttr, -1, "count")), policy, exclusive, Set.empty)
         )
         val fsmp2 = FSMProvider(sdfaProvider)
         val erf2 = ERFTask(fsmp2, ss)

@@ -1,7 +1,7 @@
 package Specs.misc
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.logic.BooleanPermutator
+import fsm.symbolic.logic.BooleanPermutator
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatestplus.junit.JUnitRunner

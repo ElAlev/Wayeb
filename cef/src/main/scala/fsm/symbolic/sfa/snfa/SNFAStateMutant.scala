@@ -1,6 +1,6 @@
 package fsm.symbolic.sfa.snfa
 
-import fsm.symbolic.sfa.Transition
+import fsm.symbolic.sfa.SFATransition
 
 object SNFAStateMutant {
   /**
@@ -18,38 +18,38 @@ object SNFAStateMutant {
   *
   * @param id The unique id of the state.
   */
-class SNFAStateMutant private[snfa] (val id: Int) {
+class SNFAStateMutant private[snfa] (val id: Int) extends Serializable {
   // The sets of next and previous states are mutable because each state is incrementally constructed by calls to
   // fsm.symbolic.sfa.snfa.SNFAStateMutant.addNext and fsm.symbolic.sfa.snfa.SNFAStateMutant.addPrevious.
 
   // the set of next states
-  private val next = collection.mutable.Set[(SNFAStateMutant, Transition)]()
+  private val next = collection.mutable.Set[(SNFAStateMutant, SFATransition)]()
   // the set of previous states
-  private val previous = collection.mutable.Set[(SNFAStateMutant, Transition)]()
+  private val previous = collection.mutable.Set[(SNFAStateMutant, SFATransition)]()
 
   /**
     * Adds a next state.
     *
     * @param new_next The next state to be added with the relevant transition.
     */
-  def addNext(new_next: (SNFAStateMutant, Transition)): Unit = next += new_next
+  def addNext(new_next: (SNFAStateMutant, SFATransition)): Unit = next += new_next
 
   /**
     * Adds a previous state.
     *
     * @param new_previous The previous state to be added with the relevant transition.
     */
-  def addPrevious(new_previous: (SNFAStateMutant, Transition)): Unit = previous += new_previous
+  def addPrevious(new_previous: (SNFAStateMutant, SFATransition)): Unit = previous += new_previous
 
   /**
     * @return All next states along with their transitions.
     */
-  def getNext: collection.mutable.Set[(SNFAStateMutant, Transition)] = next
+  def getNext: collection.mutable.Set[(SNFAStateMutant, SFATransition)] = next
 
   /**
     * @return All previous states along with their transitions.
     */
-  def getPrevious: collection.mutable.Set[(SNFAStateMutant, Transition)] = previous
+  def getPrevious: collection.mutable.Set[(SNFAStateMutant, SFATransition)] = previous
 
 }
 

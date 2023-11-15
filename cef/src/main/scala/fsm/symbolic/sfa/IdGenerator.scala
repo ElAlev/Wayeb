@@ -29,14 +29,46 @@ class IdGenerator(
                  ) {
   require(max > 0)
   require(max > alreadyGiven.size)
-  var idsGiven: Set[Int] = alreadyGiven
+  //TODO: use mutable val
+  private var idsGiven: Set[Int] = alreadyGiven
+  private var maxGiven: Int = 0
+  private var currentHead: Int = 0
+
+  private val idsGivenMutable: scala.collection.mutable.Set[Int] = scala.collection.mutable.Set[Int](alreadyGiven.toSeq:_*)
+
+  def getIdCautiousMut: Int = {
+    if (idsGivenMutable.size == max)
+      throw new Error("Id generator cannot give new id (reached capacity: " + max + ")")
+    val newId = {
+      if (idsGivenMutable.isEmpty) {
+        currentHead = 1
+        1
+      }
+      else {
+        var candidateId = if (currentHead == max) 1 else currentHead + 1
+        while (idsGivenMutable.contains(candidateId)) {
+          candidateId += 1
+        }
+        currentHead = candidateId
+        candidateId
+        /*if (idsGivenMutable.contains(candidateId))
+          throw new Error("Id generator cannot give new id (entered recycling)")
+        else {
+          maxGiven = candidateId
+          candidateId
+        }*/
+      }
+    }
+    idsGivenMutable += newId
+    newId
+  }
 
   /**
     * Creates a new ID, not already reserved by another state.
     *
     * @return The new ID.
     */
-  def getId: Int = {
+  def getIdCautiousImmut: Int = {
     if (idsGiven.size == max)
       throw new Error("Id generator cannot give new id (reached capacity: " + max + ")")
     val newId = if (idsGiven.isEmpty) 1
@@ -51,6 +83,13 @@ class IdGenerator(
     newId
   }
 
+  def getIdGreedy: Int = {
+    if (maxGiven == max) throw new Error("Id generator cannot give new id (reached capacity: " + max+1 + ")")
+    val newId = maxGiven + 1
+    maxGiven = newId
+    newId
+  }
+
   /**
     * Releases an ID in order to be usable again.
     *
@@ -59,6 +98,15 @@ class IdGenerator(
   def releaseId(id: Int): Unit = {
     require(idsGiven.contains(id))
     idsGiven = idsGiven - id
+  }
+
+  def releaseIdMut(id: Int): Unit = {
+    require(idsGivenMutable.contains(id))
+    idsGivenMutable -= id
+  }
+
+  def releaseIdsMut(ids: Set[Int]): Unit = {
+    ids.foreach(id => releaseIdMut(id))
   }
 
   def getGiven: Set[Int] = idsGiven

@@ -1,10 +1,10 @@
 package engine
 
 import profiler.WtProfiler
-import stream.GenericEvent
+import stream.{GenericEvent, ResetEvent}
 import com.typesafe.scalalogging.LazyLogging
 import db.DBConnector
-import fsm.FSMInterface
+import fsm.{FSMInterface, NSRAInterface, SNFAInterface}
 import fsm.runtime.{MatchDump, Run, RunPool}
 import model.forecaster.runtime.{ForecasterRun, ForecasterRunFactory}
 import stream.array.EventStream
@@ -12,6 +12,7 @@ import stream.source.{EndOfStreamEvent, StreamListener}
 import ui.ConfigUtils
 import utils.Progressor
 import workflow.provider.{FSMProvider, ForecasterProvider}
+import scala.collection.mutable
 
 object ERFEngine {
   /**
@@ -33,7 +34,8 @@ object ERFEngine {
           collectStats     = ConfigUtils.defaultCollectStats,
           finalsEnabled    = ConfigUtils.defaultFinalsEnabled,
           distance         = ConfigUtils.defaultDistance,
-          show = ConfigUtils.defaultShowMatchesForecasts
+          show = ConfigUtils.defaultShowMatchesForecasts,
+          reset = false
     )
   }
 
@@ -61,7 +63,8 @@ object ERFEngine {
              collectStats: Boolean,
              finalsEnabled: Boolean,
              distance: (Double, Double),
-             show: Boolean
+             show: Boolean,
+             reset: Boolean
            ): ERFEngine = {
     new ERFEngine(fsmp,
                   predProvider,
@@ -70,7 +73,8 @@ object ERFEngine {
                   collectStats,
                   finalsEnabled,
                   distance,
-                  show
+                  show,
+                  reset
     )
   }
 
@@ -129,7 +133,8 @@ class ERFEngine private (
                           collectStats: Boolean,
                           finalsEnabled: Boolean,
                           distance: (Double, Double),
-                          show: Boolean
+                          show: Boolean,
+                          reset: Boolean
                         ) extends StreamListener with LazyLogging {
 
   logger.info("Initializing engine...")
@@ -145,14 +150,22 @@ class ERFEngine private (
   private val runPool = RunPool(fsmList, expirationDeadline, distance, show)
   private val md = new MatchDump()
   private val predFactory = ForecasterRunFactory(predList, collectStats, finalsEnabled)
-  private var predictorRuns: Map[Int, List[ForecasterRun]] = fsmList.map(fsm => fsm.getId).
-    map(id => id -> List.empty[ForecasterRun]).toMap
+  private var predictorRuns: Map[Int, mutable.Map[Int,ForecasterRun]] = fsmList.map(fsm => fsm.getId).
+    map(id => id -> mutable.Map.empty[Int,ForecasterRun]).toMap
 
   private var matchesNo = 0
   private var execTime: Long = 0
   private var lastCollectTime: Long = 0
-  private var streamSize: Int = 0
+  private var effectiveStreamSize: Int = 0
+  private var firstTimestamp: Long = 0
+  private var lastTimestamp: Long = 0
   private var profiler = WtProfiler()
+
+  private var findRunsCalls: Int = 0
+  private var findRunsTime: Long = 0
+
+  private val warmupStreamSize: Int = 0
+  private var totalStreamSize: Int = 0
 
   logger.info("Initialization complete.")
 
@@ -172,7 +185,7 @@ class ERFEngine private (
         logger.info("Use getProfiler to retrieve stats.")
       }
       case _ => {
-        streamSize += 1
+        totalStreamSize += 1
         processEvent(event)
       }
     }
@@ -187,16 +200,24 @@ class ERFEngine private (
     val t1 = System.nanoTime()
     val currentTimestamp = event.timestamp
     // All FSMs process the event.
+    //logger.debug("PROCESSING " + event.toString)
     val det = fsmList.map(f => processEvent(event, f))
-    matchesNo += det.count(d => d._1)
-    // If it's time to collect stale runs, do so.
-    if (shouldCollect(currentTimestamp, lastCollectTime)) {
-      runPool.runsCollect(currentTimestamp)
-      lastCollectTime = currentTimestamp
+    if (totalStreamSize > warmupStreamSize) {
+      effectiveStreamSize += 1
+      matchesNo += det.map(d => d._1).sum
+      //logger.debug("\n\tMatches thus far: " + matchesNo)
+      val ts: Long = event.getValueOf("Timestamp").toString.toLong
+      if (effectiveStreamSize == 1) firstTimestamp = ts
+      lastTimestamp = ts
+      // If it's time to collect stale runs, do so.
+      if (shouldCollect(currentTimestamp, lastCollectTime)) {
+        runPool.runsCollect(currentTimestamp)
+       lastCollectTime = currentTimestamp
+      }
+      //execTime += det.map(d => d._2).sum
+      val t2 = System.nanoTime()
+      execTime += (t2 - t1)
     }
-    //execTime += det.map(d => d._2).sum
-    val t2 = System.nanoTime()
-    execTime += (t2 - t1)
   }
 
   /**
@@ -208,10 +229,10 @@ class ERFEngine private (
     */
   @deprecated
   def processStream(eventStream: EventStream): WtProfiler = {
-    streamSize = eventStream.getSize
-    logger.info("Running Wayeb for " + streamSize + " events")
-    val progressor = Progressor("ERFEngine", streamSize, 5)
-    for (i <- 0 until streamSize) {
+    effectiveStreamSize = eventStream.getSize
+    logger.info("Running Wayeb for " + effectiveStreamSize + " events")
+    val progressor = Progressor("ERFEngine", effectiveStreamSize, 5)
+    for (i <- 0 until effectiveStreamSize) {
       val e = eventStream.getEvent(i)
       processEvent(e)
       progressor.tick
@@ -224,36 +245,133 @@ class ERFEngine private (
     *
     * @param event The event to be processed.
     * @param thisFsm The FSM to process the event.
-    * @return True if the event led to a CE detection. Also process time for run in nanoseconds.
+    * @return Number of CE detections. Also process time for runs in nanoseconds.
     */
   private def processEvent(
                             event: GenericEvent,
                             thisFsm: FSMInterface
-                          ): (Boolean, Long) = {
-    var detected = false
+                          ): (Int, Long) = {
     /**
-      * First find the appropriate run.
-      * Exactly one run per FSM is possible (and all FSMs attempt to process the event).
+      * First find the appropriate run(s).
+      * Exactly one run per FSM is possible (and all FSMs attempt to process the event) for deterministic FSM.
+      * For non-deterministic FSM, multiple runs may need to be considered.
       */
-    val r = findRun(event, thisFsm)
-    val pt = r.processEvent(event)
-    detected = r.ceDetected
-    //RunPool.runsCollect(e.getTimestamp)
+    val partitionAttribute = thisFsm.getPartitionAttribute
+    // First retrieve the value of the  partition attribute,
+    // i.e., the attribute by which the input stream is to be partitioned.
+    val av = if (partitionAttribute.equalsIgnoreCase(singlePartitionVal)) singlePartitionVal
+    else event.getValueOf(partitionAttribute).toString
+    val runs = findRuns(event, thisFsm)
+    var detected: Int = 0
+    var processingTime: Long = 0
+    thisFsm match {
+      case _: SNFAInterface => {
+        val results = runs.map(r => processEventAtRunNonDet(event, r, av))
+        detected = results.map(_._1).sum
+        processingTime = results.map(_._2).sum
+      }
+      case _: NSRAInterface => {
+        val results = runs.map(r => processEventAtRunNonDet(event, r, av))
+        detected = results.map(_._1).sum
+        processingTime = results.map(_._2).sum
+      }
+      case _ => {
+        processingTime = runs.map(r => r.processEventDet(event)).sum
+        detected = runs.map(r => r.ceDetected).count(_ == true)
+      }
+    }
+    if (reset & detected > 0) resetRunsForFSM(thisFsm.getId)
+    (detected, processingTime)
+  }
+
+  /**
+    * Processes an event with a run of a non-deterministic FSM.
+    *
+    * @param event The new event to be processed.
+    * @param run The (non-deterministic) run.
+    * @param attributeVal The value of the partition attribute.
+    * @return The number of detected complex events and the time it took for the run to process the new event.
+    */
+  private def processEventAtRunNonDet(
+                                       event: GenericEvent,
+                                       run: Run,
+                                       attributeVal: String
+                                     ): (Int, Long) = {
+    val t1 = System.nanoTime()
+    var detected: Int = 0
+    event match {
+      case _: ResetEvent => killRun(run ,attributeVal)
+      case _ => {
+        // First check whether the run is ready to process the event.
+        // For SPST(m) we might need to wait for a couple of events before we can start processing.
+        // Other FSM types should always be ready.
+        val ready = run.checkForReadiness(event)
+        if (ready) {
+          // find the next configurations
+          val nextConfs = run.findNextConfigurations(event).toList
+          if (nextConfs.nonEmpty) {
+            // If there are more than one next configurations, we need to clone the run.
+            // If there are k next configurations, we need to create k-1 clones (from the tail), so that we have a total
+            // of k runs.
+            val newRuns = nextConfs.tail.map(conf => runPool.checkOut(run, attributeVal, event.timestamp, conf))
+            // OPT: No actual need to register the match dump with the run.
+            // Sub-optimal. Comment out this registering for better performance.
+            newRuns.foreach(r => registerRun(r, r.getFsmId))
+            val allRuns = run :: newRuns
+            //logger.debug("ACTIVE RUNS: " + allRuns.size)
+            val statesAndRuns = nextConfs.zip(allRuns)
+            // For all of the k runs, now try to produce forecasts (has an effect only in forecasting)
+            statesAndRuns.foreach(sr => {
+              val run = sr._2
+              run.emitForecasts(event, sr._1)
+            })
+            detected = allRuns.count(r => r.ceDetected)
+          }
+          else {
+            // if no next configurations have been found, this means that the run has nowhere to go,
+            // therefore we need to kill it
+            killRun(run, attributeVal)
+          }
+        }
+      }
+    }
+    val t2 = System.nanoTime()
+    val pt: Long = t2 - t1
     (detected, pt)
   }
 
   /**
-    * Method that finds the appropriate run of an FSM that should do the actual processing of the event.
+    * Kills a given run.
+    *
+    * @param run The given run.
+    * @param attributeVal The value of the partition attribute of the run.
+    */
+  private def killRun(
+                       run: Run,
+                       attributeVal: String
+                     ): Unit = {
+    runPool.release(run.fsm.getId, attributeVal, run.id)
+    predictorRuns(run.fsm.getId).remove(run.id)
+  }
+
+  private def resetRunsForFSM(fsmId: Int): Unit = {
+    runPool.reset(fsmId)
+    predictorRuns = predictorRuns.updated(fsmId, mutable.Map.empty[Int, ForecasterRun])
+  }
+
+  /**
+    * Method that finds the appropriate runs of an FSM that should do the actual processing of the event.
     *
     * @param event The event to be processed.
     * @param thisFsm The FSM for which we are trying to find an appropriate run.
-    * @return The appropriate run.
+    * @return The appropriate runs.
     */
-  private def findRun(
-                       event: GenericEvent,
-                       thisFsm: FSMInterface
-                     ): Run = {
-    val id = thisFsm.getId
+  private def findRuns(
+                        event: GenericEvent,
+                        thisFsm: FSMInterface
+                      ): List[Run] = {
+    //return myRun
+    val fsmId = thisFsm.getId
     val partitionAttribute = thisFsm.getPartitionAttribute
     // First retrieve the value of the  partition attribute,
     // i.e., the attribute by which the input stream is to be partitioned.
@@ -261,20 +379,43 @@ class ERFEngine private (
     else event.getValueOf(partitionAttribute).toString
     // If the pool of runs already has a run with this partition value (for the ID of the FSM we
     // are examining), then get this run.
-    if (runPool.existsRunWithAttributeVal(id, av)) {
-      runPool.getRunByAttribute(id, av)
+    val foundRuns = if (runPool.existsRunWithAttributeVal(fsmId, av)) {
+      findRunsCalls += 1
+      val t1 = System.nanoTime()
+      val runs = runPool.getRunsByAttribute(fsmId, av)
+      val t2 = System.nanoTime()
+      findRunsTime += (t2 - t1)
+      runs
     } // Otherwise, create a new run with this partition value.
     else {
-      val r1 = runPool.checkOut(id, av, event.timestamp)
-      r1.register(md) // Register the MatchDump with the new run.
-      if (predictorEnabled) {
-        // We also create a new predictor and register it with the new run.
-        val p1 = predFactory.getNewForecasterRun(id)
-        r1.register(p1)
-        val np = p1 :: predictorRuns(id)
-        predictorRuns = predictorRuns.updated(id, np)
-      }
-      r1
+      val r1 = runPool.checkOut(fsmId, av, event.timestamp)
+      // OPT: No actual need to register the match dump with the run.
+      // Sub-optimal. Comment out this registering for better performance.
+      registerRun(r1, fsmId)
+      List(r1)
+    }
+
+    foundRuns
+  }
+
+  /**
+    * Registers the match dump with a recognition run.
+    * Also creates a new predictor run (if forecasting is enabled) and registers it with the recognition.
+    *
+    * @param run The given recognition run.
+    * @param fsmId The FSM id of the run.
+    */
+  private def registerRun(
+                           run: Run,
+                           fsmId: Int
+                         ): Unit = {
+    run.register(md) // Register the MatchDump with the new run.
+    if (predictorEnabled) {
+      // We also create a new predictor and register it with the new run.
+      val p1 = predFactory.getNewForecasterRun(fsmId, run.id)
+      run.register(p1)
+      val np = predictorRuns(fsmId) + (run.id -> p1)//p1 :: predictorRuns(fsmId)
+      predictorRuns = predictorRuns.updated(fsmId, np)
     }
   }
 
@@ -301,10 +442,12 @@ class ERFEngine private (
   private def shutdown(): WtProfiler = {
     logger.info("Shutting down...")
     val (locked, unlocked) = runPool.getSize
-    val collectors = predictorRuns.map(p => (p._1, p._2.map(pr => pr.getCollector)))
+    val collectors = predictorRuns.map(p => (p._1, p._2.values.map(pr => pr.getCollector).toList))
     val profiler = WtProfiler()
     profiler.setGlobal(
-      streamSize   = streamSize,
+      streamSize   = effectiveStreamSize,
+      firstTimestamp = firstTimestamp,
+      lastTimestamp = lastTimestamp,
       execTime     = execTime,
       matchesNo    = matchesNo,
       lockedRuns   = locked,

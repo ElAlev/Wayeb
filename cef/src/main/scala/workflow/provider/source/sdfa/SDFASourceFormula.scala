@@ -1,13 +1,13 @@
 package workflow.provider.source.sdfa
 
-import fsm.symbolic.sfa.logic.{Predicate, Sentence}
 import fsm.symbolic.sre.SREFormula
 import fsm.CountPolicy.CountPolicy
+import fsm.symbolic.logic.{Predicate, Sentence}
 import ui.ConfigUtils
 
 object SDFASourceFormula {
   def apply(
-             formulas: List[(SREFormula, Int, String)],
+             formulas: List[(SREFormula, Int, String, Int, String)],
              policy: CountPolicy,
              exclusives: Set[Set[Predicate]],
              extras: Set[Sentence],
@@ -21,7 +21,7 @@ object SDFASourceFormula {
   )
 
   def apply(
-             formulas: List[(SREFormula, Int, String)],
+             formulas: List[(SREFormula, Int, String, Int, String)],
              policy: CountPolicy,
              exclusives: Set[Set[Predicate]],
              extras: Set[Sentence]
@@ -35,7 +35,7 @@ object SDFASourceFormula {
 }
 
 class SDFASourceFormula(
-                         val formulas: List[(SREFormula, Int, String)],
+                         val formulas: List[(SREFormula, Int, String, Int, String)],
                          val policy: CountPolicy,
                          val exclusives: Set[Set[Predicate]],
                          val extras: Set[Sentence],

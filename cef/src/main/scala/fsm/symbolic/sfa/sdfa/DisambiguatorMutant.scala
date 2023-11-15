@@ -1,9 +1,10 @@
 package fsm.symbolic.sfa.sdfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.{Guard, IdGenerator, Transition}
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.{IdGenerator, SFAGuard, SFATransition}
 import utils.Progressor
+
 import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks.{break, breakable}
 
@@ -148,7 +149,7 @@ class DisambiguatorMutant(
         val a = thisDq.head
 
         // add a new state qa to Q
-        val qai = idg.getId
+        val qai = idg.getIdCautiousImmut
         val qa = SDFAState(qai)
         sdfam.addDuplicate(qk, qai)
         if (sdfam.finals.contains(qk)) sdfam.addFinal(qai)
@@ -156,7 +157,7 @@ class DisambiguatorMutant(
         val dqa = Set(a)
         var gca: Set[Int] = Set.empty
 
-        val newTransitions = ListBuffer[Transition]()
+        val newTransitions = ListBuffer[SFATransition]()
         val progressorBA = Progressor("bA", A.size, 20)
         for (b <- A) { // for all b∈A do
           //progressorBA.tick
@@ -168,7 +169,7 @@ class DisambiguatorMutant(
           //  else
           //    δ(qa, b) = δ(q, b) and add qa to Gδ(q,b)
           val dqb = selectNextState(sdfam, qk, qai, a, b)
-          val tb = Transition(qai, dqb, Guard(b))
+          val tb = SFATransition(qai, dqb, SFAGuard(b))
           newTransitions += tb
           if (dqb == qai) gca += qai
           else {

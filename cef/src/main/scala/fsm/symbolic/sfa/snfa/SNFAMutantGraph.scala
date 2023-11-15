@@ -1,6 +1,6 @@
 package fsm.symbolic.sfa.snfa
 
-import fsm.symbolic.sfa.logic.{Predicate, Sentence}
+import fsm.symbolic.logic.{Predicate, Sentence}
 import scala.collection.mutable
 
 object SNFAMutantGraph {
@@ -85,7 +85,7 @@ class SNFAMutantGraph(
                        val snfasm: SNFAStateMutant,
                        val accessor: collection.mutable.HashMap[Int, SNFAStateMutant],
                        val finals: Set[Int]
-                     ) {
+                     ) extends Serializable {
 
   /**
     * Finds all the next states (successors) of a certain state, given a sentence and a set of exclusives, i.e.,

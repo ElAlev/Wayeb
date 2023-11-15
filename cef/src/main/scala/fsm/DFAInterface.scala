@@ -1,9 +1,12 @@
 package fsm
 
 import breeze.linalg.DenseMatrix
+import fsm.WindowType.{COUNT, WindowType}
 import fsm.classical.fa.dfa.DFA
+import fsm.symbolic.sra.Configuration
 import model.markov.TransitionProbs
 import stream.GenericEvent
+import model.vmm.pst.CyclicBuffer
 import ui.ConfigUtils
 
 object DFAInterface {
@@ -80,17 +83,25 @@ class DFAInterface(
     */
   override def getId: Int = id
 
+  override def getRuntimeWindow: Int = 0
+
+  override def getWindowType: WindowType = COUNT
+
   /**
     * Given a (current) state of the FSM and a new input event, find the next state.
     *
     * @param currentState The FSM's current state.
     * @param event The new input event.
+    * @param buffer The buffer holding the current context/suffix. Not used here.
+    * @param conf The current configuration (state + valuation) of the automaton.
     * @return The next state that the FSM moves to.
     */
   override def getNextState(
                              currentState: Int,
-                             event: GenericEvent
-                           ): Int = dfa.delta(currentState, event.eventType)
+                             event: GenericEvent,
+                             buffer: CyclicBuffer,
+                             conf: Configuration
+                           ): Set[Configuration] = Set(Configuration(dfa.delta(currentState, event.eventType)))
 
   /**
     * Serialized DFA and writes it to a file.

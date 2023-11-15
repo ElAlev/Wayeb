@@ -19,7 +19,7 @@ class ForecasterRegistry() extends LazyLogging {
     * @param pp The new prototype.
     */
   def addPrototype(pp: ForecasterPrototype): Unit = {
-    val k = pp.getId
+    val k = pp.getInterfaceId
     if (prototypes.contains(k)) {
       logger.error("There already exists a ForecasterPrototype with name: " + k)
       throw new IllegalArgumentException("There already exists a ForecasterPrototype with name: " + k)
@@ -30,16 +30,19 @@ class ForecasterRegistry() extends LazyLogging {
   /**
     * Creates a forecaster run for a FSM by cloning the prototype.
     *
-    * @param id The id of the FSM.
+    * @param fsmId The id of the FSM.
     * @return The new predictor run.
     */
-  def findAndClone(id: Int): ForecasterRun = {
-    if (!prototypes.contains(id)) {
-      logger.error("ForecasterRegistry has no prototypes for: " + id)
-      throw new IllegalArgumentException("ForecasterRegistry has no prototypes for: " + id)
+  def findAndClone(
+                    fsmId: Int,
+                    runId: Int
+                  ): ForecasterRun = {
+    if (!prototypes.contains(fsmId)) {
+      logger.error("ForecasterRegistry has no prototypes for: " + fsmId)
+      throw new IllegalArgumentException("ForecasterRegistry has no prototypes for: " + fsmId)
     }
-    val pp = prototypes(id)
-    pp.cloneForecaster
+    val pp = prototypes(fsmId)
+    pp.cloneForecaster(runId)
   }
 
 }

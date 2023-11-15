@@ -31,7 +31,7 @@ class NFA2DFA extends FlatSpec with LazyLogging {
         val elnfap = NFAFactory.buildEliminatedNFA(p, word.toSet)
         assert(elnfap.isDFAEquivalent)
         val dfap = DFAUtils.convertNfa2Dfa(elnfap)
-        logger.debug("Pattern: " + p.toString + " Word: " + word + "/" + elnfap.accepts(word) + "/" + dfap.accepts(word))
+        logger.debug("Pattern: " + p.toString + " Word: " + word + "/" + nfap.accepts(word) + "/" + elnfap.accepts(word) + "/" + dfap.accepts(word))
         assert(nfap.accepts(word) == dfap.accepts(word))
         assert(elnfap.accepts(word) == dfap.accepts(word))
       }

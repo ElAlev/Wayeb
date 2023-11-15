@@ -41,6 +41,8 @@ object FSMProvider {
   * @param wrappedProvider The FSM provider to be wrapped. One of:
   *                        - workflow.provider.DFAProvider;
   *                        - workflow.provider.SDFAProvider;
+  *                        - workflow.provider.SPSAProvider;
+  *                        - workflow.provider.SPSTProvider.
   * @param conditions A list of conditions that must be checked and satisfied.
   */
 class FSMProvider(
@@ -57,7 +59,18 @@ class FSMProvider(
     wrappedProvider match {
       case x: DFAProvider => x.provide()
       case x: SDFAProvider => x.provide()
+      case x: SPSAProvider => x.provide()
+      case x: SPSTProvider => x.provide()
+      case x: DSRAProvider => x.provide()
+      case x: SPSTmProvider => x.provide()
+      case x: SNFAProvider => x.provide()
+      case x: NSRAProvider => x.provide()
       case _ => throw new IllegalArgumentException("FSM provider not recognized")
     }
   }
+
+  /**
+    * @return True if the wrapper provider is a SPSA provider.
+    */
+  def isSPSA: Boolean = wrappedProvider.isInstanceOf[SPSAProvider]
 }

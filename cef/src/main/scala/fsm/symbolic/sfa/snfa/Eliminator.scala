@@ -1,7 +1,9 @@
 package fsm.symbolic.sfa.snfa
 
-import fsm.symbolic.sfa.{Guard, Transition}
-import fsm.symbolic.sfa.logic._
+import fsm.symbolic.Constants
+import fsm.symbolic.TransitionOutput.TransitionOutput
+import fsm.symbolic.logic.{EpsilonSentence, Sentence}
+import fsm.symbolic.sfa.{SFAGuard, SFATransition}
 
 /**
   * Class that eliminates all epsilon transitions from a SNFA. After creating an Eliminator object, we call
@@ -24,6 +26,7 @@ import fsm.symbolic.sfa.logic._
   * @param snfa The original SNFA, possibly containing epsilon transitions.
   */
 class Eliminator private[snfa] (snfa: SNFA) {
+  val nonEpsilonSentences: Set[Sentence] = snfa.getSentences.filter(s => !s.isInstanceOf[EpsilonSentence])
 
   /**
     * Class used to track which states we have checked during elimination.
@@ -63,7 +66,7 @@ class Eliminator private[snfa] (snfa: SNFA) {
       else false
     }
 
-    def getNewStateId: Int = statesSeen.size + statesToSee.size
+    def getNewStateId: Int = statesSeen.size + statesToSee.size + 1
 
     def hasStatesToSee: Boolean = statesToSee.nonEmpty
 
@@ -78,9 +81,9 @@ class Eliminator private[snfa] (snfa: SNFA) {
 
   def eliminate: SNFA = {
     var states = Map[Int, SNFAState]()
-    var transitions = List[Transition]()
+    var transitions = List[SFATransition]()
     var finals = Set[Int]()
-    var dead = -1
+    var dead = Constants.deadStateIdConstant //-1
 
     val tracker = new Tracker()
     val starte = snfa.start
@@ -94,9 +97,9 @@ class Eliminator private[snfa] (snfa: SNFA) {
         states = states + (newId -> newSNFAState)
         tracker.addSeenState(newId)
         val successors = buildSuccessorsForState(stateSet)
-        for ((pred, nextSet) <- successors) {
+        for ((pred, (nextSet, output)) <- successors) {
           val nextId = tracker.addStateToSee(nextSet)
-          val newTransition = Transition(newId, nextId, Guard(pred))
+          val newTransition = SFATransition(newId, nextId, SFAGuard(pred), output)
           transitions = newTransition :: transitions
         }
         if (stateSet.intersect(snfa.finals).nonEmpty) finals = finals + newId
@@ -104,15 +107,32 @@ class Eliminator private[snfa] (snfa: SNFA) {
       }
 
     }
-    val elsnfa = SNFA(states, transitions, 0, finals)
+    val elsnfa = SNFA(states, transitions, 1, finals)//shiftStateIds(SNFA(states, transitions, 1, finals))
     elsnfa.setStateAsDead(dead)
     elsnfa
   }
 
-  private def buildSuccessorsForState(stateSet: Set[Int]): Map[Sentence, Set[Int]] = {
-    val sentences = snfa.getSentences.filter(s => !s.isInstanceOf[EpsilonSentence])
-    val succ = sentences.map(s => (s -> snfa.enclose(snfa.getSuccessors(stateSet, s, Set.empty[Set[Predicate]])))).toMap
-    succ
+  private def shiftStateIds(snfa: SNFA): SNFA = {
+    val newStates = snfa.states.map(s => (s._1+1, SNFAState(s._1+1)))
+    val newTransitions = snfa.transitions.map(t => SFATransition(t.source + 1, t.target +1, t.guard.asInstanceOf[SFAGuard], t.output))
+    val newStart = snfa.start + 1
+    val newFinals = snfa.finals.map(f => f + 1)
+    val shiftedSNFA = SNFA(newStates, newTransitions, newStart, newFinals)
+    shiftedSNFA
+  }
+
+  private def buildSuccessorsForState(stateSet: Set[Int]): Map[Sentence, (Set[Int], TransitionOutput)] = {
+    val relevantTransitions = snfa.transitions.filter(t => stateSet.contains(t.source) & !t.guard.sentence.isInstanceOf[EpsilonSentence])
+    val sentences1 = relevantTransitions.map(t => (t.guard.sentence, t.output)).toSet
+    val succ1 = sentences1.map(s => {
+      val states = relevantTransitions.filter(t => t.guard.isSentence(s._1)).flatMap(x => snfa.enclose(x.target)).toSet
+      (s._1, (states, s._2))
+    }).toMap
+
+    //val sentences = snfa.getSentences.filter(s => !s.isInstanceOf[EpsilonSentence])
+    //val succ = sentences.map(s => (s -> snfa.enclose(snfa.getSuccessors(stateSet, s, Set.empty[Set[Predicate]])))).toMap
+
+    succ1
   }
 
 }

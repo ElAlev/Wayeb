@@ -1,8 +1,11 @@
 package fsm
 
 import breeze.linalg.DenseMatrix
+import fsm.WindowType.WindowType
+import fsm.symbolic.sra.Configuration
 import model.markov.TransitionProbs
 import stream.GenericEvent
+import model.vmm.pst.CyclicBuffer
 import model.waitingTime.WtDistribution
 
 /**
@@ -82,17 +85,29 @@ trait FSMInterface {
     */
   def getPartitionAttribute: String
 
+  def getRuntimeWindow: Int
+
+  def getWindowType: WindowType
+
   /**
-    * Given a (current) state of the FSM and a new input event, find the next state.
+    * Given a (current) state/configuration of the FSM and a new input event, find the next state/configuration.
+    * Buffer used only with SPSTs. In this case, the buffer is used to find the leaf of the tree.
+    * See relevant implementation in fsm.SPSTInterface#getNextState(int, stream.GenericEvent, vmm.pst.CyclicBuffer).
+    * In all other cases, the buffer argument is ignored.
+    * Configuration used only with SRA. In all other cases, it is ignored.
     *
     * @param currentState The FSM's current state.
     * @param event The new input event.
-    * @return The next state that the FSM moves to.
+    * @param buffer The buffer holding the current context/suffix.
+    * @param conf The current configuration (state + valuation) of the automaton.
+    * @return The next configuration that the FSM moves to.
     */
   def getNextState(
                     currentState: Int,
-                    event: GenericEvent
-                  ): Int
+                    event: GenericEvent,
+                    buffer: CyclicBuffer,
+                    conf: Configuration
+                  ): Set[Configuration]
 
   /**
     * Serializes the FSM and writes it to a file.
@@ -292,5 +307,10 @@ trait FSMInterface {
       connectedCandidates.map(c => c :: partialPath)
     }
   }
+
+  //TODO: remove method
+  //def getPattern: String
+  //TODO: remove method
+  //def getOutput(state: Int): Set[String]
 
 }

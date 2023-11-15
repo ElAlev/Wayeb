@@ -15,7 +15,10 @@ object JsonFileStreamSource {
   */
 class JsonFileStreamSource(filename: String) extends StreamSource {
 
-  override protected def emitEvents(mode: EmitMode): EventStream = {
+  override protected def emitEvents(
+                                     mode: EmitMode,
+                                     timeout: Long
+                                   ): EventStream = {
     val bufferedSource = io.Source.fromFile(filename)
     var totalCounter = 1
     val eventStream = new EventStream()

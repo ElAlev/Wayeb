@@ -1,8 +1,8 @@
 package fsm.symbolic.sfa.sdfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.{Guard, IdGenerator, Transition}
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.{IdGenerator, SFAGuard, SFATransition}
 import utils.Progressor
 
 import scala.util.control.Breaks._
@@ -121,7 +121,7 @@ object Disambiguator extends LazyLogging {
         val a = thisDq.head
 
         // add a new state qa to Q
-        val qai = idg.getId
+        val qai = idg.getIdCautiousImmut
         val qa = SDFAState(qai)
         states = states + (qai -> qa)
         val newQkDups = duplicates(qk) + qai
@@ -141,7 +141,7 @@ object Disambiguator extends LazyLogging {
           //  else
           //    δ(qa, b) = δ(q, b) and add qa to Gδ(q,b)
           val dqb = selectNextState(tmpSDFA, qk, qai, a, b)
-          val tb = Transition(qai, dqb, Guard(b))
+          val tb = SFATransition(qai, dqb, SFAGuard(b))
           transitions = tb :: transitions
           if (dqb == qai) gca += qai
           else {
@@ -162,7 +162,7 @@ object Disambiguator extends LazyLogging {
             // δ(p, am) = qa and add p to Gqa
             if (tmp) {
               val ti = transitions.indexWhere(t => t.source == pi & t.guard.sentence == am)
-              val tb = Transition(pi, qai, Guard(am))
+              val tb = SFATransition(pi, qai, SFAGuard(am))
               transitions = transitions.updated(ti, tb)
               gca += pi
               tmpSDFA = SDFA(states, transitions, sdfa.start, finals, duplicates)

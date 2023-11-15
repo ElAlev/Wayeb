@@ -2,11 +2,11 @@ package workflow.provider
 
 import java.io.{FileInputStream, ObjectInputStream}
 import model.waitingTime.ForecastMethod.ForecastMethod
-import model.forecaster.{ForecasterInterface, RandomInterface, WtInterface}
+import model.forecaster.{HMMInterface, NextInterface, ForecasterInterface, RandomInterface, WtInterface}
 import workflow.condition.{Condition, FileExistsCondition}
 import workflow.provider.source._
-import forecaster.{ForecasterSource, ForecasterSourceBuild, ForecasterSourceDirect, ForecasterSourceRandom, ForecasterSourceSerialized}
-import workflow.task.predictorTask.{PredictorRandomTask, WtPredictorTask}
+import forecaster.{ForecasterHMMSourceBuild, ForecasterNextSourceBuild, ForecasterSource, ForecasterSourceBuild, ForecasterSourceDirect, ForecasterSourceRandom, ForecasterSourceSerialized}
+import workflow.task.predictorTask.{HMMPredictorTask, PredictorNextTask, PredictorRandomTask, WtPredictorTask}
 
 object ForecasterProvider {
   /**
@@ -57,6 +57,8 @@ class ForecasterProvider private(
       case x: ForecasterSourceDirect => x.forecasters
       case x: ForecasterSourceBuild => estimateForecasts(x.fsmp, x.wtdp, x.horizon, x.confidenceThreshold, x.maxSpread, x.method)
       case x: ForecasterSourceRandom => estimateRandomForecasts(x.fsmp, x.horizon)
+      case x: ForecasterNextSourceBuild => estimateNextForecasts(x.fsmp, x.mcp)
+      case x: ForecasterHMMSourceBuild => setupHMMForecasters(x.fsmp, x.hmmp, x.horizon, x.confidenceThreshold, x.maxSpread, x.method)
       case x: ForecasterSourceSerialized => deserializeFile(x.fn)
       case _ => throw new Error("Not valid PredictorSource")
     }
@@ -85,6 +87,28 @@ class ForecasterProvider private(
     pt.execute()._1
   }
 
+  /**
+    * Creates HMM forecasters.
+    *
+    * @param fsmp The provider for the FSMs.
+    * @param hmmp The provider for the HMMs.
+    * @param horizon The horizon.
+    * @param confidenceThreshold The confidence threshold.
+    * @param maxSpread The maximum spread.
+    * @param method The forecasting method.
+    * @return A list of forecaster interfaces.
+    */
+  private def setupHMMForecasters(
+                                   fsmp: FSMProvider,
+                                   hmmp: HMMProvider,
+                                   horizon: Int,
+                                   confidenceThreshold: Double,
+                                   maxSpread: Int,
+                                   method: ForecastMethod
+                                 ): List[HMMInterface] = {
+    val pt = HMMPredictorTask(fsmp, hmmp, horizon, confidenceThreshold, maxSpread, method)
+    pt.execute()._1
+  }
 
   /**
     * Estimates random forecast intervals.
@@ -101,6 +125,20 @@ class ForecasterProvider private(
     prt.execute()
   }
 
+  /**
+    * Estimates next top k forecasts.
+    *
+    * @param fsmp The provider for the FSMs.
+    * @param mcp The provider for the Markov chains.
+    * @return A list of forecaster interfaces.
+    */
+  private def estimateNextForecasts(
+                                     fsmp: FSMProvider,
+                                     mcp: MarkovChainProvider
+                                   ): List[NextInterface] = {
+    val pnt = PredictorNextTask(fsmp, mcp)
+    pnt.execute()
+  }
 
   /**
     * Deserializes a list of waiting-time forecaster interfaces.

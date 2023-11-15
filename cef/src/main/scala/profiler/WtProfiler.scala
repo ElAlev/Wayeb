@@ -3,8 +3,8 @@ package profiler
 import com.github.tototoshi.csv.CSVWriter
 import com.typesafe.scalalogging.LazyLogging
 import fsm.runtime.MatchDump
-import profiler.classification.{ClassificationStatsEstimator, ClassificationForecastCollector}
-import profiler.regression.{RegressionStatsEstimator, RegressionForecastCollector}
+import profiler.classification.{ClassificationForecastCollector, ClassificationStatsEstimator}
+import profiler.regression.{RegressionForecastCollector, RegressionStatsEstimator}
 
 object WtProfiler {
   /**
@@ -37,12 +37,21 @@ object WtProfiler {
   */
 class WtProfiler() extends ProfilerInterface with LazyLogging {
   private var streamSize = 0
+  private var firstTimestamp: Long = 0
+  private var lastTimestamp: Long = 0
   private var execTime: Long = 0
   private var matchesNo = 0
   private var lockedRuns = 0
   private var unlockedRuns = 0
   private var matchDump: MatchDump = _
   var statsEstimators: Map[Int, StatsEstimator] = Map.empty
+
+  private var memTest: Boolean = false
+  private var maxMemTotal: Long = 0
+  private var avgMemTotal: Long = 0
+  private var maxMemUsed: Long = 0
+  private var avgMemUsed: Long = 0
+  private var countMemMeas: Int = 0
 
   /**
     * Estimates statistics for all patterns.
@@ -64,6 +73,8 @@ class WtProfiler() extends ProfilerInterface with LazyLogging {
     */
   def setGlobal(
                  streamSize: Int,
+                 firstTimestamp: Long,
+                 lastTimestamp: Long,
                  execTime: Long,
                  matchesNo: Int,
                  lockedRuns: Int,
@@ -71,11 +82,28 @@ class WtProfiler() extends ProfilerInterface with LazyLogging {
                  matchDump: MatchDump
                ): Unit = {
     this.streamSize = streamSize
+    this.firstTimestamp = firstTimestamp
+    this.lastTimestamp = lastTimestamp
     this.execTime = execTime
     this.matchesNo = matchesNo
     this.lockedRuns = lockedRuns
     this.unlockedRuns = unlockedRuns
     this.matchDump = matchDump
+  }
+
+  def setMemStats(
+                   maxMemTotal: Long,
+                   avgMemTotal: Long,
+                   maxMemUsed: Long,
+                   avgMemUsed: Long,
+                   countMemMeas: Int
+                 ): Unit = {
+    this.maxMemTotal = maxMemTotal
+    this.avgMemTotal = avgMemTotal
+    this.maxMemUsed = maxMemUsed
+    this.avgMemUsed = avgMemUsed
+    this.countMemMeas = countMemMeas
+    memTest = true
   }
 
   /**
@@ -104,6 +132,8 @@ class WtProfiler() extends ProfilerInterface with LazyLogging {
   def getStat(which: String): String = {
     which match {
       case "streamSize" => streamSize.toString
+      case "firstTimestamp" => firstTimestamp.toString
+      case "lastTimestamp" => lastTimestamp.toString
       case "execTime" => execTime.toString
       case "matchesNo" => matchesNo.toString
       case "lockedRuns" => lockedRuns.toString
@@ -150,7 +180,7 @@ class WtProfiler() extends ProfilerInterface with LazyLogging {
   def printProfileInfo(fn: String): Unit = {
     printRecStats(fn)
     printPatternStats(fn + "_pattern")
-    printPerStateStats(fn + "_pattern_per_state")
+    //printPerStateStats(fn + "_pattern_per_state")
   }
 
   /**
@@ -166,20 +196,41 @@ class WtProfiler() extends ProfilerInterface with LazyLogging {
                       ): Unit = {
     printProfileInfo()
     writeProfileInfo(prefix, fn)
-    printPerStateStats(fn + "_per_state")
+    //printPerStateStats(fn + "_per_state")
   }
 
   /**
     * Prints recognition stats.
     */
   def printRecStats(): Unit = {
-    val throughput = (streamSize.toDouble / execTime.toDouble) * 1000000000
-    logger.info("\n***** RECOGNITION STATS *****")
-    logger.info("\tStream size: " + streamSize + " events")
-    logger.info("\tExecution time: " + (execTime / 1000000) + "ms")
-    logger.info("\tThroughput : " + throughput + " events/sec")
-    logger.info("\tMatches No: " + matchesNo)
-    logger.info("\tLocked/Unlocked Runs: " + lockedRuns + "/" + unlockedRuns)
+    if (!memTest) {
+      val throughput = (streamSize.toDouble / execTime.toDouble) * 1000000000
+      val streamDuration = (lastTimestamp - firstTimestamp)
+      if (lastTimestamp < firstTimestamp) {
+        logger.warn("lastTimestamp < firstTimestamp")
+      }
+      //val improvementOverRealTime: Double = ((execTime.toDouble / 1000000000) / streamDuration) * 100
+      logger.info("\n***** RECOGNITION STATS *****")
+      logger.info("\tStream size: " + streamSize + " events")
+      logger.info("\tExecution time: " + (execTime / 1000000) + "ms")
+      logger.info("\tThroughput : " + throughput.toInt + " events/sec")
+      //logger.info("\tStream duration : " + streamDuration + " sec")
+      //logger.info("\tImprovement over real time : " + improvementOverRealTime.toInt + " %")
+      logger.info("\tMatches No: " + matchesNo)
+      //logger.info("\tLocked/Unlocked Runs: " + lockedRuns + "/" + unlockedRuns)
+      val execTimeSec = execTime.toDouble / 1000000000
+      //println(execTimeSec + "," + streamSize + "," + execTimeSec + "," + matchesNo + "," + execTimeSec + "," + throughput + "," + throughput)
+    }
+    else {
+      val avgMemTotalkB = if (countMemMeas!=0) (avgMemTotal / countMemMeas) else -1
+      val avgMemUsedkB = if (countMemMeas!=0) (avgMemUsed / countMemMeas) else -1
+      logger.info("\n***** MEMORY STATS *****")
+      logger.info("\tmaxMemTotal: " + maxMemTotal / 1024 + " kB")
+      logger.info("\tavgMemTotal: " + avgMemTotalkB / 1024 + " kB")
+      logger.info("\tmaxMemUsed: " + maxMemUsed / 1024 + " kB")
+      logger.info("\tavgMemUsed: " + avgMemUsedkB / 1024 + " kB")
+      //println(maxMemTotal + "," + avgMemTotalkB + "," + maxMemUsed + "," + avgMemUsedkB + "," + countMemMeas)
+    }
   }
 
   /**

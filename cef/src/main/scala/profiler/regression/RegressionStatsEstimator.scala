@@ -244,15 +244,15 @@ class RegressionStatsEstimator(collectors: List[RegressionForecastCollector]) ex
   override def printProfileInfo(): Unit = {
     logger.info("\n***** FORECASTING STATS *****\n")
     logger.info("\tCorrect/Total Predictions: " + correctPredictionsNo + "/" + predictionsNo)
-    logger.info("\tPrecision: " + precision)
+    logger.info("\tPrecision: " + "%.3f".format(precision))
     logger.info("\tMissed/Total Detections: " + missed + "/" + allDetected)
-    logger.info("\tLoss ratio: " + lossRatio)
+    logger.info("\tLoss ratio: " + "%.3f".format(lossRatio))
     logger.info("\tNo Forecasts/Total Detections: " + noForecasts + "/" + allDetected)
-    logger.info("\tNo forecasts ratio: " + noForecastsRatio)
-    logger.info("\tTotal/Avg spread: " + totalSpread + "/" + avgSpread)
-    logger.info("\tTotal/Avg interval score: " + totalIntervalScore + "/" + avgIntervalScore)
-    logger.info("\tAvg distance: " + avgDist)
-    logger.info("\tRMSE/MAE/MARE: " + rmse + "/" + mae + "/" + mare)
+    logger.info("\tNo forecasts ratio: " + "%.3f".format(noForecastsRatio))
+    logger.info("\tTotal/Avg spread: " + totalSpread + "/" + "%.3f".format(avgSpread))
+    logger.info("\tTotal/Avg interval score: " + totalIntervalScore + "/" + "%.3f".format(avgIntervalScore))
+    logger.info("\tAvg distance: " + "%.3f".format(avgDist))
+    logger.info("\tRMSE/MAE/MARE: " + "%.5f".format(rmse) + "/" + "%.5f".format(mae) + "/" + "%.5f".format(mare))
   }
 
   /**
@@ -286,11 +286,11 @@ class RegressionStatsEstimator(collectors: List[RegressionForecastCollector]) ex
     for ((k, _) <- sorted if precisionPerState(k) != -1.0) {
       logger.info("\n\t@STATE " + k)
       logger.info("\tCorrect/Total Predictions: " + correctPredictionsNoPerState(k) + "/" + predictionsNoPerState(k))
-      logger.info("\tPrediction accuracy: " + precisionPerState(k))
+      logger.info("\tPrediction accuracy: " + "%.3f".format(precisionPerState(k)))
       logger.info("\tMissed/Total Detections: " + missedPerState(k) + "/" + allDetected)
-      logger.info("\tLoss ratio: " + lossRatioPerState(k))
-      logger.info("\tAvg spread: " + avgSpreadPerState(k))
-      logger.info("\tAvg distance: " + avgDistPerState(k))
+      logger.info("\tLoss ratio: " + "%.3f".format(lossRatioPerState(k)))
+      logger.info("\tAvg spread: " + "%.3f".format(avgSpreadPerState(k)))
+      logger.info("\tAvg distance: " + "%.3f".format(avgDistPerState(k)))
     }
   }
 

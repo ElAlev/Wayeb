@@ -8,7 +8,7 @@ import play.api.libs.json.Json
   *
   * @param format The format of the data given in json or csv
   * @param filePath The file that contains the input stream to be simulated
-  * @param delimeter The delimeter of the data in case of csv format
+  * @param delimeter The delimiter of the data in case of csv format
   * @param topic The output topic to write the simulated records
   * @param servers The kafka servers to connect to (e.g., localhost:9092 for local execution)
   * @param timePos The index of the timestamp column in case of csv format. Indexing starts from 0
@@ -140,11 +140,40 @@ object StreamSimulator {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
         val producer = new KafkaProducer[String, String](props)
-
-        var prevTs: Long = 0
         val file = Source.fromFile(filePath)
-        var clock: Long = System.currentTimeMillis()
+        var prevTs: Long = 0
+        var mod: Long = 0
+        var negWaitTime: Long = 0
+        var clock: Long = 0
+        /**
+          * The formula that simulates the rate at which events are sent. Not used when max speed is selected
+          * Out of order events are sent instantly as events with larger timestamp have already been processed (i.e., curTs <= prevTs)
+          * Small deviation at targeted simulated time since command *if (waitTime > 0)* is not calculated as part of the loop processing time
+          * The variables below are needed for the next iteration/message and hence can not be defined as arguments of simulateRate (i.e., their values are changed)
+          * prevTs: the timestamp of the previous event
+          * mod: Timestamps are integers and we need the remainder of ((curTs - prevTs) / rate) to be taken into account in the next iteration
+          * negWaitTime: If the waitTime is negative it is removed in the next iteration to catch up
+          * clock: clock - System.currentTimeMillis() gives us the loop processing time. Also needs to be subtracted from the waitTime
+          * @param curTs The timestamp of the current event
+          * @param id The id of the current event
+          * @param msg The event message
+          */
+        def simulateRate(curTs: Long, id: String, msg: String): Unit = {
+          if (curTs > prevTs) {
+            if (prevTs == 0) prevTs = curTs
+            val diff = curTs - prevTs + mod
+            val waitTime = diff / rate + negWaitTime + clock - System.currentTimeMillis()
+            if (waitTime > 0) Thread.sleep(waitTime)
+            clock = System.currentTimeMillis()
+            negWaitTime = if (waitTime < 0) waitTime else 0
+            mod = diff % rate
+            prevTs = curTs
+          }
+          val record = new ProducerRecord[String, String] (topic, id, msg)
+          producer.send (record)
+        }
 
+        clock = System.currentTimeMillis()
         format match {
           // SEND INSTANTLY CSV
           case "csv" => if (rate == 0) {
@@ -161,17 +190,7 @@ object StreamSimulator {
               val columns = msg.split (delimeter, maxPos + 2)
               val curTs = (columns(timePos).toDouble * modifier).toLong
               val id = columns (idPos)
-
-              if (curTs >= 0) { //special case for timestamps that are -1
-                if (prevTs == 0) prevTs = curTs
-                val waitTime = (curTs - prevTs) / rate + clock - System.currentTimeMillis()
-                if (waitTime > 0) Thread.sleep(waitTime)
-                clock = System.currentTimeMillis()
-                prevTs = curTs
-              }
-
-              val record = new ProducerRecord[String, String] (topic, id, msg)
-              producer.send (record)
+              simulateRate(curTs, id, msg)
           }
 
           // SEND INSTANTLY JSON
@@ -189,25 +208,16 @@ object StreamSimulator {
               val map = Json.parse(msg)
               val curTs = (map(timekey).as[Double]* modifier).toLong
               val id = map(idkey).toString
-
-              if (curTs >= 0) { //special case for timestamps that are -1
-                if (prevTs == 0) prevTs = curTs
-                val waitTime = (curTs - prevTs) / rate + clock - System.currentTimeMillis()
-                if (waitTime > 0) Thread.sleep(waitTime)
-                clock = System.currentTimeMillis()
-                prevTs = curTs
-              }
-
-              val record = new ProducerRecord[String, String] (topic, id, msg)
-              producer.send (record)
+              simulateRate(curTs, id, msg)
             }
 
           case x => {file.close(); producer.close(); throw new IllegalArgumentException(x)}
 
         }
         file.close()
-        val record = new ProducerRecord[String, String] (topic, null, "terminate")
-        producer.send(record)
+        val numOfPartitions = producer.partitionsFor(topic).size
+        for (partition <- 0 until numOfPartitions)
+          producer.send(new ProducerRecord[String, String] (topic, partition, null, "terminate"))
         producer.close()
       }
 

@@ -60,13 +60,14 @@ class RunEstimatorEngine(
     val av = if (partitionAttribute.equalsIgnoreCase(singlePartitionVal)) singlePartitionVal
     else e.getValueOf(partitionAttribute).toString
     if (rp.existsRunWithAttributeVal(fsm.getId, av)) {
-      val r = rp.getRunByAttribute(fsm.getId, av)
-      r.processEvent(e)
+      // CAUTION: Assumes deterministic automata used, thus only one run per partition attribute value.
+      val r = rp.getRunsByAttribute(fsm.getId, av).head
+      r.processEventDet(e)
       detected = r.ceDetected
     } else {
       val r1 = rp.checkOut(fsm.getId, av, e.timestamp)
       r1.register(learner)
-      r1.processEvent(e)
+      r1.processEventDet(e)
       detected = r1.ceDetected
     }
     detected

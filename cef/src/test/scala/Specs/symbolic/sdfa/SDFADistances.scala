@@ -2,8 +2,8 @@ package Specs.symbolic.sdfa
 
 import com.typesafe.scalalogging.LazyLogging
 import fsm.SDFAInterface
+import fsm.symbolic.logic.PredicateConstructor
 import fsm.symbolic.sfa.SFAUtils
-import fsm.symbolic.sfa.logic.PredicateConstructor
 import fsm.symbolic.sfa.snfa.SNFAUtils
 import fsm.symbolic.sre.SREUtils
 import org.junit.runner.RunWith

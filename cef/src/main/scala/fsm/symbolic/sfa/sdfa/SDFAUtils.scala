@@ -1,15 +1,51 @@
 package fsm.symbolic.sfa.sdfa
 
-import fsm.symbolic.sfa.{Guard, Transition}
+import fsm.symbolic.sfa.{SFAGuard, SFATransition}
 import com.typesafe.scalalogging.LazyLogging
 import fsm.classical.fa.dfa.DFA
-import fsm.symbolic.sfa.logic.{AtomicSentence, PredicateConstructor, Sentence}
+import fsm.symbolic.logic.PredicateConstructor
 import fsm.CountPolicy.CountPolicy
 import scala.util.control.Breaks.{break, breakable}
-import fsm.symbolic.sfa.Constants.deadId
+import fsm.symbolic.Constants.deadStateIdConstant
 import fsm.CountPolicy.OVERLAP
+import fsm.symbolic.logic.{AtomicSentence, Sentence}
+import model.vmm.Symbol
+import model.vmm.mapper.Isomorphism
 
 object SDFAUtils extends LazyLogging {
+
+  /**
+   * Flips all states of a given SDFA, i.e., makes all of its final states non-final and all of its non-final final.
+   * You have to make sure that the SDFA is complete before flipping.
+   *
+   * @param sdfa The original SDFA.
+   * @return The same SDFA with flipped states.
+   */
+  def flipStates(sdfa: SDFA): SDFA = {
+    val allStates = sdfa.states.keySet
+    val oldFinals = sdfa.finals
+    val newFinals: Set[Int] = allStates.diff(oldFinals)//allStates - oldFinals
+    val newSDFA = SDFA(sdfa.states,sdfa.transitions,sdfa.start,newFinals)
+    newSDFA
+  }
+
+  /**
+    * Converts a classical DFA to a SDFA, according to the provided isomorphism.
+    *
+    * @param dfa The original, classical DFA.
+    * @param iso The isomorphism, mapping each classical symbol to a minterm and vice versa.
+    * @return The "equivalent" SDFA.
+    */
+  def dfa2sdfa(
+                dfa: DFA,
+                iso: Isomorphism
+              ): SDFA = {
+    val states = dfa.getStates.map(s => (s._1, SDFAState(s._1))).toMap
+    val transitions = dfa.getTransitions.map(t => SFATransition(t.source, t.target, SFAGuard(iso.getMinTermForSymbol(Symbol(t.symbol.toInt)))))
+    val start = dfa.getStart
+    val finals = dfa.getAllFinals.toSet
+    SDFA(states, transitions, start, finals)
+  }
 
   /**
     * Converts a classical DFA to a SDFA. Each symbol on DFA transitions is converted to an event type predicate.
@@ -19,7 +55,7 @@ object SDFAUtils extends LazyLogging {
     */
   def dfa2sdfa(dfa: DFA): SDFA = {
     val states = dfa.getStates.map(s => (s._1, SDFAState(s._1))).toMap
-    val transitions = dfa.getTransitions.map(t => Transition(t.source, t.target, Guard(AtomicSentence(PredicateConstructor.getEventTypePred(t.symbol)).asInstanceOf[Sentence])))
+    val transitions = dfa.getTransitions.map(t => SFATransition(t.source, t.target, SFAGuard(AtomicSentence(PredicateConstructor.getEventTypePred(t.symbol)).asInstanceOf[Sentence])))
     val start = dfa.getStart
     val finals = dfa.getAllFinals.toSet
     SDFA(states, transitions, start, finals)
@@ -108,7 +144,7 @@ object SDFAUtils extends LazyLogging {
     * @return true if no dead accessible state exists.
     */
   def checkForDead(sdfa: SDFA): Boolean = {
-    if (sdfa.states.exists(s => s._1 == deadId)) {
+    if (sdfa.states.exists(s => s._1 == deadStateIdConstant)) {
       logger.error("There should not be an accessible dead state at this point")
       throw new Error("There should not be an accessible dead state at this point")
     }
@@ -164,7 +200,7 @@ object SDFAUtils extends LazyLogging {
                              ): SDFA = {
     require(sdfa.states.contains(from) & sdfa.states.contains(to))
     val fromTransitions = sdfa.transitions.filter(t => t.source == from)
-    val newToTransitions = fromTransitions.map(t => Transition(to, t.target, t.guard))
+    val newToTransitions = fromTransitions.map(t => SFATransition(to, t.target, t.guard.asInstanceOf[SFAGuard]))
     val intactTransitions = sdfa.transitions.filter(t => t.source != to)
     val newTransitions = newToTransitions ::: intactTransitions
     SDFA(sdfa.states, newTransitions, sdfa.start, sdfa.finals)

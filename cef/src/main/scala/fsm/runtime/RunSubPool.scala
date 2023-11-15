@@ -1,8 +1,10 @@
 package fsm.runtime
 
+import fsm.symbolic.sfa.IdGenerator
+import fsm.symbolic.sra.Configuration
 import ui.ConfigUtils
 
-import scala.collection.mutable.Map
+import scala.collection.mutable
 
 /**
   * A pool of runs for a FSM.
@@ -13,35 +15,38 @@ import scala.collection.mutable.Map
   */
 class RunSubPool private[fsm] (
                                 fsmId: Int,
-                                runReg: RunRegistry
+                                runReg: RunRegistry,
+                                runIdGenerator: IdGenerator
                               ) {
   // Active runs are locked, i.e., not available for reuse. Key is the timestamp when the run was created or assigned to
   // a new partition value.
-  private val locked = Map[Long, Run]()
+  private val locked = mutable.Map[Long, Run]()
   // Inactive and expired runs are unlocked, i.e., available for reuse. Key is the time the run was collected.
-  private val unlocked = Map[Long, Run]()
+  private val unlocked = mutable.Map[Long, Run]()
   // For each value of the partition attribute, we have a run. We also need this map which is keyed on the partition
   // attribute for efficiency reasons. See fsm.runtime.RunSubPool.existsRunWithAttributeVal and
   // fsm.runtime.RunSubPool.getRunByAttribute.
-  private val lockedByAttribute = Map[String, Run]()
+  private val lockedByAttribute = mutable.Map[String, mutable.Map[Int,Run]]()
   private var expirationDeadline: Long = ConfigUtils.defaultExpiration
 
   /**
     * Checks whether there already exists an active run for the given value of the partition attribute.
+    *
     * @param attributeVal The given value of the partition attribute.
     * @return True if such a run already exists.
     */
   def existsRunWithAttributeVal(attributeVal: String): Boolean = lockedByAttribute.contains(attributeVal)
 
   /**
-    * Retrieves an already existing active run for the given value of the partition attribute. Assumes that such a run
-    * already exists.
+    * Retrieves the already existing active runs for the given value of the partition attribute. Assumes that such runs
+    * already exist.
+    *
     * @param attributeVal The given value of the partition attribute.
-    * @return The run corresponding to the value of the partition attribute.
+    * @return The runs corresponding to the value of the partition attribute.
     */
-  def getRunByAttribute(attributeVal: String): Run = {
+  def getRunsByAttribute(attributeVal: String): List[Run] = {
     require(lockedByAttribute.contains(attributeVal))
-    lockedByAttribute(attributeVal)
+    lockedByAttribute(attributeVal).values.toList
   }
 
   /**
@@ -65,17 +70,45 @@ class RunSubPool private[fsm] (
       oldRun.setAttributeValue(attributeVal)
       // now we need to move the run to the set of locked runs
       locked += (timestamp -> oldRun)
-      lockedByAttribute += (attributeVal -> oldRun)
+      lockedByAttribute += (attributeVal -> mutable.Map(oldRun.id -> oldRun))
       returnRun = oldRun
     } else {
       // otherwise, we need to create a new run through cloning
-      val newRun = runReg.findAndClone(fsmId)
+      val runId = runIdGenerator.getIdCautiousMut//getIdCautiousImmut//getIdGreedy
+      val newRun = runReg.findAndClone(fsmId, runId)
       newRun.setAttributeValue(attributeVal)
       locked += (timestamp -> newRun)
-      lockedByAttribute += (attributeVal -> newRun)
+      val newMap = if (lockedByAttribute.contains(attributeVal)) lockedByAttribute(attributeVal) + (runId -> newRun) else mutable.Map(runId -> newRun)
+      lockedByAttribute += (attributeVal -> newMap)
       returnRun = newRun
     }
     returnRun
+  }
+
+  /**
+   * Based on a given run, creates a clone and starts the new run with a given configuration.
+   *
+   * @param run The given run to be cloned.
+   * @param timestamp The timestamp of the new event.
+   * @param attributeVal The value of the partition attribute of the new event.
+   * @param conf The initial configuration for the new run.
+   * @return The new run.
+   */
+  def checkOut(
+                run: Run,
+                timestamp: Long,
+                attributeVal: String,
+                conf: Configuration
+              ): Run = {
+    require(fsmId == run.getFsmId)
+    val runId = runIdGenerator.getIdCautiousMut//getIdCautiousImmut//getIdGreedy
+    val newRun = run.cloneRun(runId, conf)
+    newRun.setAttributeValue(attributeVal)
+    locked += (timestamp -> newRun)
+    //lockedByAttribute.updated(attributeVal, lockedByAttribute(attributeVal) + (runId -> newRun))
+    val newMap = lockedByAttribute(attributeVal) + (runId -> newRun)
+    lockedByAttribute += (attributeVal -> newMap)
+    newRun
   }
 
   /**
@@ -117,6 +150,33 @@ class RunSubPool private[fsm] (
         unlocked += (currentTimestamp + counter -> r)
       }
     }
+  }
+
+  def reset(): Unit = {
+    locked.keySet.foreach(runId => locked.remove(runId))
+    unlocked.keySet.foreach(runId => unlocked.remove(runId))
+    lockedByAttribute.keySet.foreach(av => lockedByAttribute.remove(av))
+  }
+
+  /**
+   * Removes a given run from the pool of available runs.
+   *
+   * @param attributeVal The value of the partition attribute of the run.
+   * @param runId The id of the run to be removed.
+   */
+  def release(
+               attributeVal: String,
+               runId: Int
+             ): Unit = {
+    require(lockedByAttribute.contains(attributeVal), "lockedByAttribute does not contain runs with attribute value " + attributeVal)
+    require(lockedByAttribute(attributeVal).contains(runId), "lockedByAttribute(" + attributeVal +") does not contain run with id " + runId)
+    lockedByAttribute(attributeVal).remove(runId)
+    if (lockedByAttribute(attributeVal).isEmpty) lockedByAttribute.remove(attributeVal)
+    val unlockedRun = unlocked.filter(r => r._2.id == runId)
+    if (unlockedRun.nonEmpty) unlocked.remove(unlockedRun.head._1)
+    val lockedRun = locked.filter(r => r._2.id == runId)
+    if (lockedRun.nonEmpty) locked.remove(lockedRun.head._1)
+    runIdGenerator.releaseIdMut(runId)
   }
 
   /**

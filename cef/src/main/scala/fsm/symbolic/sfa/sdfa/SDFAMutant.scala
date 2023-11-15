@@ -1,8 +1,9 @@
 package fsm.symbolic.sfa.sdfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.{Guard, Transition}
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.{SFAGuard, SFATransition}
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks.{break, breakable}
@@ -23,7 +24,7 @@ object SDFAMutant {
   */
 class SDFAMutant private[sdfa] (
                                  initialStates: Map[Int, SDFAState],
-                                 initialTransitions: List[Transition],
+                                 initialTransitions: List[SFATransition],
                                  initialStart: Int,
                                  initialFinals: Set[Int],
                                  initialDuplicates: Map[Int, Set[Int]]
@@ -32,7 +33,7 @@ class SDFAMutant private[sdfa] (
   // First, convert everything to mutable collections. We are going to work incrementally, adding and removing states
   // and transitions.
   val states: mutable.Map[Int, SDFAState] = collection.mutable.HashMap(initialStates.toSeq: _*) //initialStates.to[scala.collection.mutable.Map]
-  val transitions: ListBuffer[Transition] = initialTransitions.to[ListBuffer]
+  val transitions: ListBuffer[SFATransition] = initialTransitions.to[ListBuffer]
   val start: Int = initialStart
   val finals: collection.mutable.Set[Int] = initialFinals.to[collection.mutable.Set]
   val duplicates: mutable.Map[Int, Set[Int]] = collection.mutable.HashMap(initialDuplicates.toSeq: _*)
@@ -53,10 +54,10 @@ class SDFAMutant private[sdfa] (
   def addState(
                 newId: Int,
                 newState: SDFAState,
-                newTransitions: List[Transition]
+                newTransitions: List[SFATransition]
               ): Unit = {
     logger.whenDebugEnabled {
-      require(!states.contains(newId))
+      require(!states.contains(newId), "State with id :" + newId + " already exists")
       require(addStateCheckSource(newId, newTransitions))
       require(addStateCheckComplete(newTransitions))
       require(addStateCheckTargets(newId, newTransitions))
@@ -77,7 +78,7 @@ class SDFAMutant private[sdfa] (
     */
   private def addStateCheckSource(
                                    state: Int,
-                                   transitionsToCheck: List[Transition]
+                                   transitionsToCheck: List[SFATransition]
                                  ): Boolean =
     transitionsToCheck.forall(t => t.source == state)
 
@@ -91,7 +92,7 @@ class SDFAMutant private[sdfa] (
     */
   private def addStateCheckTargets(
                                     state: Int,
-                                    transitionsToCheck: List[Transition]
+                                    transitionsToCheck: List[SFATransition]
                                   ): Boolean =
     transitionsToCheck.forall(t => (t.target == state) | (states.contains(t.target)))
 
@@ -101,7 +102,7 @@ class SDFAMutant private[sdfa] (
     * @param transitionsToCheck The transitions to be added.
     * @return True of the list of transitions is complete.
     */
-  private def addStateCheckComplete(transitionsToCheck: List[Transition]): Boolean = {
+  private def addStateCheckComplete(transitionsToCheck: List[SFATransition]): Boolean = {
     val theseSentences = transitionsToCheck.map(t => t.guard.sentence).toSet
     theseSentences == sentences
   }
@@ -114,7 +115,7 @@ class SDFAMutant private[sdfa] (
     */
   private def updateDeltaOnSentenceNewTransitions(
                                                    state: Int,
-                                                   newTransitions: List[Transition]
+                                                   newTransitions: List[SFATransition]
                                                  ): Unit = {
     val tit = newTransitions.iterator
     while (tit.hasNext) {
@@ -138,7 +139,7 @@ class SDFAMutant private[sdfa] (
     */
   private def updateGraphNewTransitions(
                                          state: Int,
-                                         newTransitions: List[Transition]
+                                         newTransitions: List[SFATransition]
                                        ): Unit = graph.addState(state, newTransitions)
 
   /**
@@ -154,7 +155,7 @@ class SDFAMutant private[sdfa] (
                         newTarget: Int
                       ): Unit = {
     val ti = transitions.indexWhere(t => t.source == source & t.guard.sentence == sentence)
-    val tb = Transition(source, newTarget, Guard(sentence))
+    val tb = SFATransition(source, newTarget, SFAGuard(sentence))
     transitions.update(ti, tb)
     updateDeltaOnSentenceOldTransition(source, sentence, newTarget)
     updateGraphOldTransition(source, tb, newTarget)
@@ -182,7 +183,7 @@ class SDFAMutant private[sdfa] (
     */
   private def updateGraphOldTransition(
                                         source: Int,
-                                        transition: Transition,
+                                        transition: SFATransition,
                                         newTarget: Int
                                       ): Unit = graph.updateTransition(source, transition, newTarget)
 
@@ -303,7 +304,7 @@ class SDFAMutant private[sdfa] (
     *
     * @return The list of transitions sorted.
     */
-  def getSortedTransitions: List[Transition] = transitions.toList.sortWith((t1, t2) => transitionOrder(t1, t2))
+  def getSortedTransitions: List[SFATransition] = transitions.toList.sortWith((t1, t2) => transitionOrder(t1, t2))
 
   /**
     * Decides the order between two transitions. Order first compares the source states, then the target states and then
@@ -314,8 +315,8 @@ class SDFAMutant private[sdfa] (
     * @return True if the first transition is first in order.
     */
   private def transitionOrder(
-                               t1: Transition,
-                               t2: Transition
+                               t1: SFATransition,
+                               t2: SFATransition
                              ): Boolean = {
     if (t1.source < t2.source) true //List(t1,t2)
     else if (t1.source == t2.source) {

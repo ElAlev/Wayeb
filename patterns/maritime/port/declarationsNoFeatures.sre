@@ -1,2 +1,0 @@
-+(IsEventTypePredicate(RESET)),
-~(IsEventTypePredicate(RESET),WithinCirclePredicate(-4.47530,48.38273,5.0),OutsideCirclePredicate(-4.47530,48.38273,5.0))

@@ -9,7 +9,12 @@ import utils.StringUtils.list2Str
   * Actual SDFA make use of the classes under fsm.symbolic.sfa.logic.
   */
 
-abstract class LogicSentence
+abstract class LogicSentence {
+  /**
+   * @return All variables used as arguments in the sentence.
+   */
+  def getRegisterVariableArguments: Set[String]
+}
 
 case class LogicAtomicSentence(
                                 p: LogicPredicate,
@@ -18,6 +23,8 @@ case class LogicAtomicSentence(
   override def toString: String = {
     p.toString + "(" + list2Str[LogicTerm](terms, "") + ")"
   }
+
+  override def getRegisterVariableArguments: Set[String] = terms.filter(t => t.isInstanceOf[RegisterVariable]).map(_.toString).toSet
 
 }
 case class LogicComplexSentence(
@@ -28,9 +35,13 @@ case class LogicComplexSentence(
 
   override def toString: String = op.toString + "(" + list2Str[LogicSentence](sentences, ",") + ")"
 
+  override def getRegisterVariableArguments: Set[String] = sentences.map(s => s.getRegisterVariableArguments).toSet.flatten
+
 }
 
 class TrueSentence extends LogicAtomicSentence(new TruePredicate, List.empty[LogicTerm])
+
+class EpsilonSentence extends LogicAtomicSentence(new EpsilonPredicate, List.empty[LogicTerm])
 
 case class PartialComplexSentence(
     op: BooleanOperator,
@@ -51,8 +62,14 @@ case class LogicVariable(name: String) extends LogicTerm {
   override def toString: String = name
 }
 
+case class RegisterVariable(name: String) extends LogicTerm {
+  override def toString: String = name
+}
+
 case class LogicPredicate(name: String) {
   override def toString: String = name
 }
 
 class TruePredicate extends LogicPredicate("TruePredicate")
+
+class EpsilonPredicate extends LogicPredicate("EpsilonPredicate")

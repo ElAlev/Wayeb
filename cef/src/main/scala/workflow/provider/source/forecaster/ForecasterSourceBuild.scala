@@ -34,7 +34,7 @@ object ForecasterSourceBuild {
     horizon,
     confidenceThreshold,
     maxSpread,
-    ConfigUtils.defaultSpreadMethod
+    ConfigUtils.defaultForeMethod
   )
 
 }

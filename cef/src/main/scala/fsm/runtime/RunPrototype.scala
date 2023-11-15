@@ -8,10 +8,10 @@ trait RunPrototype {
     * A run prototype must be able to clone itself.
     * @return A new run.
     */
-  def cloneRun(): Run
+  def cloneRun(id: Int): Run
 
   /**
     * @return The id of the run's FSM.
     */
-  def getId: Int
+  def getFsmId: Int
 }

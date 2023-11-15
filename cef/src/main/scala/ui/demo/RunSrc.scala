@@ -6,17 +6,18 @@ import ui.ConfigUtils
 import workflow.provider.source.forecaster.ForecasterSourceBuild
 import workflow.provider.source.matrix.MCSourceMLE
 import workflow.provider.source.sdfa.SDFASourceFromSRE
-import workflow.provider.source.wt.WtSourceMatrix
+import workflow.provider.source.wt.{WtSourceDirect, WtSourceMatrix, WtSourceSPST}
 import workflow.provider._
+import workflow.provider.source.spst.{SPSTSourceDirectI, SPSTSourceFromSDFA}
 import workflow.task.engineTask.ERFTask
 
 object RunSrc extends App {
-  final val confidenceThreshold = 0.4
+  final val confidenceThreshold = 0.5
   final val horizon = 50
   final val domain = "maritime"
-  final val maxSpread = 10
+  final val maxSpread = 5
   final val method = ForecastMethod.CLASSIFY_NEXTK
-  final val distance = (0.0001, 0.5)
+  final val distance = (0.0001, 1.0)
 
   final val home = System.getenv("WAYEB_HOME")
   final val dataDir: String = home + "/data/maritime/"
@@ -66,5 +67,43 @@ object RunSrc extends App {
 
   val f1score = prof.getStatFor("f1", 0)
   println("\n\n\n\n\n\tF1-score: " + f1score)
+
+  final val pMin = 0.001
+  final val alpha = 0.0
+  final val gamma = 0.001
+  final val r = 1.05
+  val spstp1 = SPSTProvider(SPSTSourceFromSDFA(sdfap, 1, streamTrainSource, pMin = pMin, alpha = alpha, gamma = gamma, r = r))
+  val spstp = SPSTProvider(SPSTSourceDirectI(List(spstp1.provide().head)))
+  val fsmp1 = FSMProvider(spstp)
+  val wtp0 = WtProvider(WtSourceSPST(
+    spstp,
+    horizon         = horizon,
+    cutoffThreshold = ConfigUtils.wtCutoffThreshold,
+    distance        = distance
+  ))
+  val wtp1 = WtProvider(WtSourceDirect(List(wtp0.provide().head)))
+  val pp1 = ForecasterProvider(ForecasterSourceBuild(
+    fsmp1,
+    wtp1,
+    horizon             = horizon,
+    confidenceThreshold = confidenceThreshold,
+    maxSpread           = maxSpread,
+    method              = method
+  ))
+
+  val erft1 = ERFTask(
+    fsmp             = fsmp1,
+    pp               = pp1,
+    predictorEnabled = true,
+    finalsEnabled    = false,
+    expirationDeadline   = ConfigUtils.defaultExpiration,
+    distance         = distance,
+    streamSource     = streamTestSource
+  )
+  val prof1 = erft1.execute()
+  prof1.printProfileInfo()
+
+  val f1score1 = prof1.getStatFor("f1", 0)
+  println("\n\n\n\n\n\tF1-score: " + f1score1)
 
 }

@@ -1,7 +1,7 @@
 package fsm.symbolic.sfa
 
 import com.typesafe.scalalogging.LazyLogging
-import fsm.symbolic.sfa.logic._
+import fsm.symbolic.logic.{Predicate, Sentence}
 import fsm.symbolic.sfa.sdfa.SDFA
 import fsm.symbolic.sfa.snfa.SNFA
 import ui.ConfigUtils
@@ -77,7 +77,7 @@ object SFAUtils extends LazyLogging {
 
   /**
     * Same as fsm.symbolic.sfa.SFAUtils#determinizeI(fsm.symbolic.sfa.snfa.SNFA, scala.collection.immutable.Set, scala.collection.immutable.Set, java.lang.String)
-    * Uses default methof for minterm construction.
+    * Uses default method for minterm construction.
     *
     * @param snfa The SNFA to be determinized.
     * @param exclusives The set of exclusives.

@@ -1,5 +1,6 @@
 package fsm.runtime
 
+import fsm.symbolic.Valuation
 import stream.GenericEvent
 
 object RunMessage {
@@ -13,6 +14,7 @@ object RunMessage {
              attributeValue: String,
              isEmitting: Boolean,
              lastEvent: GenericEvent,
+             valuation: Valuation,
              show: Boolean
            ): RunMessage = new RunMessage(
     fmDetected,
@@ -25,6 +27,7 @@ object RunMessage {
     isEmitting: Boolean,
     false,
     lastEvent,
+    valuation,
     show
   )
 
@@ -34,11 +37,12 @@ object RunMessage {
     -1,
     -1,
     -1,
-    new Match(),
+    Match(),
     "",
     false,
     true,
     GenericEvent("", -1),
+    Valuation(),
     false
   )
 }
@@ -68,6 +72,7 @@ class RunMessage(
                   val isEmitting: Boolean,
                   val isReset: Boolean,
                   val lastEvent: GenericEvent,
+                  val valuation: Valuation,
                   val show: Boolean
                 ) {
 

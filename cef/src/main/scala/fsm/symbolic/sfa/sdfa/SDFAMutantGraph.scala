@@ -1,8 +1,9 @@
 package fsm.symbolic.sfa.sdfa
 
-import fsm.symbolic.sfa.Transition
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.symbolic.logic.Sentence
+import fsm.symbolic.sfa.SFATransition
 import stream.GenericEvent
+
 import scala.collection.mutable
 
 object SDFAMutantGraph {
@@ -96,7 +97,7 @@ class SDFAMutantGraph(
     */
   def addState(
                 newStateId: Int,
-                newTransitions: List[Transition]
+                newTransitions: List[SFATransition]
               ): Unit = {
     val newState = SDFAStateMutant(newStateId)
     accessor += (newStateId -> newState)
@@ -119,7 +120,7 @@ class SDFAMutantGraph(
     */
   def updateTransition(
                         source: Int,
-                        transition: Transition,
+                        transition: SFATransition,
                         newTarget: Int
                       ): Unit = {
     val sourceState = accessor(source)

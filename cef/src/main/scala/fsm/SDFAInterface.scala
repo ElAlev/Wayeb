@@ -1,10 +1,13 @@
 package fsm
 
 import breeze.linalg.DenseMatrix
-import fsm.symbolic.sfa.logic.Sentence
+import fsm.WindowType.{COUNT, WindowType}
+import fsm.symbolic.logic.Sentence
 import fsm.symbolic.sfa.sdfa.SDFA
+import fsm.symbolic.sra.Configuration
 import model.markov.TransitionProbs
 import stream.GenericEvent
+import model.vmm.pst.CyclicBuffer
 import ui.ConfigUtils
 
 object SDFAInterface {
@@ -44,7 +47,7 @@ object SDFAInterface {
 }
 
 /**
-  * This class is a wrapper for symbolic automata. Extends fsm.FSMInterface.
+  * This class is a wrapper for deterministic symbolic automata. Extends fsm.FSMInterface.
   *
   * @param sdfa The symbolic deterministic finite automaton (SDFA) to wrap.
   * @param id The SDFA's unique id.
@@ -80,18 +83,25 @@ class SDFAInterface(
     */
   override def getId: Int = id
 
+  override def getRuntimeWindow: Int = 0
+
+  override def getWindowType: WindowType = COUNT
+
   /**
     * Given a (current) state of the FSM and a new input event, find the next state.
     *
     * @param currentState The FSM's current state.
     * @param event The new input event.
+    * @param buffer The buffer holding the current context/suffix. Not used here.
+    * @param conf The current configuration (state + valuation) of the automaton. Not used here.
     * @return The next state that the FSM moves to.
     */
   override def getNextState(
                              currentState: Int,
-                             event: GenericEvent
-                           ): Int =
-    sdfa.getDelta(currentState, event).head
+                             event: GenericEvent,
+                             buffer: CyclicBuffer,
+                             conf: Configuration
+                           ): Set[Configuration] = Set(sdfa.getDelta(currentState, event).head)
 
   /**
     * Finds the target state from a source state, given a minterm/sentence.

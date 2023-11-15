@@ -10,6 +10,7 @@ import workflow.provider.source.matrix.{
   MCSourceDirect,
   MCSourceMLE,
   MCSourceProbs,
+  MCSourceSPSA,
   MCSourceSerialized
 }
 
@@ -51,6 +52,14 @@ object MarkovChainProvider {
   def apply(mcSource: MCSourceSerialized): MarkovChainProvider =
     new MarkovChainProvider(mcSource, List(new FileExistsCondition(mcSource.fn)))
 
+  /**
+    * Constructor for MC provider when sdfaSource is workflow.provider.source.matrix.MCSourceSPSA.
+    * The source contains SPSAa.
+    *
+    * @param mcSource A workflow.provider.source.matrix.MCSourceSPSA.
+    * @return A MC provider.
+    */
+  def apply(mcSource: MCSourceSPSA): MarkovChainProvider = new MarkovChainProvider(mcSource, List.empty[Condition])
 }
 
 /**
@@ -61,6 +70,7 @@ object MarkovChainProvider {
   *                 - MCSourceMLE when the transition matrix must be estimated through MLE.
   *                 - MCSourceProbs when the MC must be constructed from a set of conditional probabilities.
   *                 - MCSourceSerialized when the MC ahs been serialized and saved.
+  *                 - MCSourceSPSA when the MC is to be retreived from SPSA.
   * @param conditions A list of conditions that must be checked and satisfied.
   */
 class MarkovChainProvider private(
@@ -79,6 +89,7 @@ class MarkovChainProvider private(
       case x: MCSourceMLE => estimateMatrix(x.fsmp, x.streamSource)
       case x: MCSourceProbs => createMatrixFromProbs(x.fsmp, x.probs)
       case x: MCSourceSerialized => deserialize(x.fn)
+      case x: MCSourceSPSA => getMarkovChainFromSPSA(x.spsa)
       case _ => throw new Error("Not valid MatrixSource")
     }
   }
@@ -112,6 +123,17 @@ class MarkovChainProvider private(
     val fsmList = fsmp.provide()
     val mcs = fsmList.map(fsm => MarkovChainFactory.buildMC(fsm, probs))
     mcs
+  }
+
+  /**
+    * Retrieves the Markov chains from the given SPSAs.
+    *
+    * @param spsap The provider for the SPSAs.
+    * @return The list of Markov chains.
+    */
+  private def getMarkovChainFromSPSA(spsap: SPSAProvider): List[MarkovChain] = {
+    val spsa = spsap.provide()
+    spsa.map(x => x.getMarkovChain)
   }
 
   /**

@@ -1,9 +1,9 @@
 package Specs.symbolic
 
 import com.typesafe.scalalogging.LazyLogging
+import fsm.symbolic.logic.PredicateConstructor
 import fsm.symbolic.sre.SREUtils
 import fsm.symbolic.sfa.SFAUtils
-import fsm.symbolic.sfa.logic.PredicateConstructor
 import fsm.symbolic.sfa.snfa.SNFAUtils
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec

@@ -30,7 +30,7 @@ object WtForecasterBuilder extends LazyLogging {
              confidenceThreshold: Double,
              maxSpread: Int
            ): WtForecasterBuilder = {
-    WtForecasterBuilder(fsm, wtd, horizon, confidenceThreshold, maxSpread, ConfigUtils.defaultSpreadMethod)
+    WtForecasterBuilder(fsm, wtd, horizon, confidenceThreshold, maxSpread, ConfigUtils.defaultForeMethod)
   }
 
   /**

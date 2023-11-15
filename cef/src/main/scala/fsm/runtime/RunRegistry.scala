@@ -16,7 +16,7 @@ class RunRegistry {
     * @param rp The new prototype.
     */
   def addPrototype(rp: RunPrototype): Unit = {
-    val k = rp.getId
+    val k = rp.getFsmId
     if (prototypes.contains(k))
       throw new IllegalArgumentException("There already exists a RunPrototype with id: " + k)
     prototypes += (k -> rp)
@@ -25,14 +25,17 @@ class RunRegistry {
   /**
     * Creates a run for a FSM by cloning the prototype.
     *
-    * @param id The id of the FSM.
+    * @param fsmId The id of the FSM.
     * @return The new run.
     */
-  def findAndClone(id: Int): Run = {
-    if (!prototypes.contains(id))
-      throw new IllegalArgumentException("RunRegistry has no prototypes for: " + id)
-    val rp = prototypes(id)
-    rp.cloneRun()
+  def findAndClone(
+                    fsmId: Int,
+                    runId: Int
+                  ): Run = {
+    if (!prototypes.contains(fsmId))
+      throw new IllegalArgumentException("RunRegistry has no prototypes for: " + fsmId)
+    val rp = prototypes(fsmId)
+    rp.cloneRun(runId)
   }
 
   /**

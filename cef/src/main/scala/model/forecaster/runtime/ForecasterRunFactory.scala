@@ -41,15 +41,18 @@ class ForecasterRunFactory(
     */
   private def initialize(pis: List[ForecasterInterface]): ForecasterRegistry = {
     val tmpReg = new ForecasterRegistry()
-    pis.foreach(pi => tmpReg.addPrototype(new ForecasterRun(pi, collectStats, finalsEnabled)))
+    pis.foreach(pi => tmpReg.addPrototype(new ForecasterRun(0, pi, collectStats, finalsEnabled)))
     tmpReg
   }
 
   /**
     * Creates a new predictor run for a given FSM.
     *
-    * @param id The id of the given FSM.
+    * @param fsmId The id of the given FSM.
     * @return A new predictor run for the given FSM.
     */
-  def getNewForecasterRun(id: Int): ForecasterRun = foreReg.findAndClone(id)
+  def getNewForecasterRun(
+                           fsmId: Int,
+                           runId: Int
+                         ): ForecasterRun = foreReg.findAndClone(fsmId, runId)
 }
