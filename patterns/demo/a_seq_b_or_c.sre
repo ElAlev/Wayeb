@@ -1,1 +1,1 @@
-;(IsEventTypePredicate(A),+(IsEventTypePredicate(B),IsEventTypePredicate(C))){order:2}
+;(IsEventTypePredicate(A),+(IsEventTypePredicate(B),IsEventTypePredicate(C))){order:2}{window:0}

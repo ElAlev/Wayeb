@@ -1,7 +1,7 @@
 # Wayeb
 
 Wayeb is a Complex Event Processing and Forecasting (CEP/F) engine written in [Scala](http://scala-lang.org).
-It is based on symbolic automata and Markov models.
+It is based on symbolic automata and full- or variable-order Markov models.
 
 ## Quick start
 
@@ -22,15 +22,15 @@ $ sbt assembly
 
 ### Recognition
 
-In [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) you may find a very simple dataset, 
+In $WAYEB_HOME/data/demo/data.csv you may find a very simple dataset,
 consisting of 100 events. The event type is either A, B or C.
-In [$WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre](patterns/demo/a_seq_b_or_c.sre) you may find a simple complex event definition for the above dataset.
+In $WAYEB_HOME/patterns/demo/a_seq_b_or_c.sre you may find a simple complex event definition for the above dataset.
 It detects an event of type A followed by another event of type B or C.
 If we want to run this pattern over the stream,
-we must first compile this pattern into an automaton 
+we must first compile this pattern into an automaton
 (make sure you have created a *results* folder under $WAYEB_HOME):
 ```
-$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar compile --patterns:patterns/demo/a_seq_b_or_c.sre --declarations:patterns/demo/declarations.sre --outputFsm:results/a_seq_b_or_c.fsm
+$ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar compile --patterns:patterns/demo/a_seq_b_or_c.sre --declarations:patterns/demo/declarations.sre --outputFsm:results/a_seq_b_or_c.fsm
 ```
 Now, *results/a_seq_b_or_c.fsm* is the produced serialized finite state machine.
 Note that we also provided as input a *declarations.sre* file.
@@ -39,27 +39,26 @@ are mutually exclusive (i.e., an event can have only one type).
 This helps the compiler create a more compact automaton.
 We can use this FSM to perform event recognition on this simple dataset:
 ```
-$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar recognition --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --statsFile:results/recstats
+$ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar recognition --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --statsFile:results/recstats
 ```
 
 ### Forecasting
 
 For forecasting, we first need to use a training dataset in order to learn a probabilistic model for the FSM.
-For this simple guide, 
-we will use [$WAYEB_HOME/data/demo/data.csv](data/demo/data.csv) both as a training and as a test dataset,
-solely for convenience. 
+For this simple guide,
+we will use $WAYEB_HOME/data/demo/data.csv both as a training and as a test dataset,
+solely for convenience.
 Normally, you should use different datasets.
 
 We first run maximum likelihood estimation:
 ```
-$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar mle --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --outputMc:results/a_seq_b_or_c.mc
+$ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar mle --fsm:results/a_seq_b_or_c.fsm --stream:data/demo/data.csv --outputMc:results/a_seq_b_or_c.mc
 ```
 The file *results/a_seq_b_or_c.mc* is the serialized Markov model.
 The final step is to use the FSM and the Markov model to perform forecasting:
 ```
-$ java -jar cef/target/scala-2.12/wayeb-0.2.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --spreadMethod:classify-nextk
+$ java -jar cef/target/scala-2.12/wayeb-0.6.0-SNAPSHOT.jar forecasting --modelType:fmm --fsm:results/a_seq_b_or_c.fsm --mc:results/a_seq_b_or_c.mc --stream:data/demo/data.csv --statsFile:results/forestats --threshold:0.5 --maxSpread:10 --horizon:20 --foreMethod:classify-nextk
 ```
-
 
 ## License
 
@@ -73,14 +72,13 @@ For use by individuals,
 Wayeb is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
 or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-This license is provided exclusively for research purposes. 
+This license is provided exclusively for research purposes.
 The results of any such research involving Wayeb must be made publicly available.
 
 For commercial/institutional/governmental use or any other use by private or public
 legal entities, sharing, modifying and distributing Wayeb or any derivatives of it
 in any form, such as source code, libraries and executables, requires the written
-permission of its author(s) (Elias Alevizos), possibly accompanied by a request for licensing fees.
-
+permission of its author(s) (Elias Alevizos) and a possible request for licensing fees.
 
 ## Documentation
 
@@ -88,13 +86,16 @@ permission of its author(s) (Elias Alevizos), possibly accompanied by a request 
 - [Overview](docs/overview.md)
 - [Recognition](docs/cep.md)
 - [Forecasting with full-oder Markov models](docs/ceffmm.md)
-- [Reading streams from Kafka](docs/simulator.md)
+- [Forecasting with variable-oder Markov models](docs/cefvmm.md)
+- [Reading streams from Kafka](docs/kafkainput.md)
 - [Using Wayeb as a library](docs/lib.md)
 - [How to cite Wayeb](docs/references.md)
+- [Reproducing results for VLDBJ experiments](docs/experiments.md)
 
 ## Citing Wayeb
 If you want to cite Wayeb, use the following references:
 
+(Version that works only with classical automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/debs/AlevizosAP17,
   author    = {Elias Alevizos and
@@ -112,6 +113,7 @@ If you want to cite Wayeb, use the following references:
 } 
 ```
 
+(Version that works with symbolic automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/lpar/AlevizosAP18,
   author    = {Elias Alevizos and
@@ -134,10 +136,36 @@ If you want to cite Wayeb, use the following references:
 
 ```
 
+(Version that works only with symbolic automata and variable-order Markov models)
+```
+@article{DBLP:journals/vldbj/AlevizosAP20,
+  author    = {Elias Alevizos and
+               Alexander Artikis and
+               Georgios Paliouras},
+  title     = {Complex Event Forecasting with Prediction Suffix Trees: a Formal Framework},
+  journal   = {VLDBJ}
+  year      = {2020}
+} 
+```
+
+(Version that works only with symbolic register automata and variable-order Markov models.
+To be updated.)
+```
+@article{DBLP:journals/corr/abs-2110-04032,
+author       = {Elias Alevizos and
+Alexander Artikis and
+Georgios Paliouras},
+title        = {Symbolic Register Automata for Complex Event Recognition and Forecasting},
+journal      = {CoRR},
+volume       = {abs/2110.04032},
+year         = {2021}
+}
+```
+
+
 ## Contributors
 
 * Elias Alevizos (main developer).
-* [Emmanouil Ntoulias](https://github.com/manosntoulias) (distributed version, to be released; stream simulator).
+* [Emmanouil Ntoulias](https://github.com/manosntoulias) (stream simulator).
 * Maria Petropanagiotaki (relaxed selection policies).
 * [Evangelos Michelioudakis](https://github.com/vagmcs) (sbt structure).
-

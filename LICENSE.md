@@ -14,4 +14,4 @@ The results of any such research involving Wayeb must be made publicly available
 For commercial/institutional/governmental use or any other use by private or public
 legal entities, sharing, modifying and distributing Wayeb or any derivatives of it
 in any form, such as source code, libraries and executables, requires the written
-permission of its author(s) (Elias Alevizos), possibly accompanied by a request for licensing fees.
+permission of its author(s) (Elias Alevizos) and a possible request for licensing fees.

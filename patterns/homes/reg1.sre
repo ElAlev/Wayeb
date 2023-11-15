@@ -1,0 +1,1 @@
+#(;(EQ(householdId,0.0)["x"],EQ(householdId,2.0),^(EQ(householdId,4.0),GTAttr(value,"x")))){window:10}{windowType:time}

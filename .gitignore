@@ -64,7 +64,7 @@ project/plugins/project/
 .worksheet
 
 #Kafka
-kafkaConfigs
+#kafkaConfigs
 
 # mine
 .idea

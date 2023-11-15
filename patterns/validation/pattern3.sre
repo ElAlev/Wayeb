@@ -1,0 +1,1 @@
+;(IsEventTypePredicate(A)["x"],^(IsEventTypePredicate(B),EQAttr(xattr,"x"))){partitionBy:someId}

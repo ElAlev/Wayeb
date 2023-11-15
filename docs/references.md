@@ -2,6 +2,7 @@
 
 If you want to cite Wayeb, used the following references:
 
+(Version that works only with classical automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/debs/AlevizosAP17,
   author    = {Elias Alevizos and
@@ -19,6 +20,7 @@ If you want to cite Wayeb, used the following references:
 } 
 ```
 
+(Version that works with symbolic automata and full-order Markov models)
 ```
 @inproceedings{DBLP:conf/lpar/AlevizosAP18,
   author    = {Elias Alevizos and
@@ -39,4 +41,30 @@ If you want to cite Wayeb, used the following references:
   url       = {https://easychair.org/publications/paper/VKP1}
 }
 
+```
+
+(Version that works only with symbolic automata and variable-order Markov models)
+```
+@article{DBLP:journals/vldbj/AlevizosAP20,
+  author    = {Elias Alevizos and
+               Alexander Artikis and
+               Georgios Paliouras},
+  title     = {Complex Event Forecasting with Prediction Suffix Trees: a Formal Framework},
+  journal   = {VLDBJ}
+  year      = {2020}
+}
+```
+
+(Version that works only with symbolic register automata and variable-order Markov models.
+To be updated.)
+```
+@article{DBLP:journals/corr/abs-2110-04032,
+author       = {Elias Alevizos and
+Alexander Artikis and
+Georgios Paliouras},
+title        = {Symbolic Register Automata for Complex Event Recognition and Forecasting},
+journal      = {CoRR},
+volume       = {abs/2110.04032},
+year         = {2021}
+}
 ```

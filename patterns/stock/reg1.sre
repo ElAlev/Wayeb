@@ -1,0 +1,1 @@
+#(;(^(IsEventTypePredicate(SELL),EQStr(name,INTC))["x"],^(IsEventTypePredicate(BUY),EQStr(name,RIMM)),^(IsEventTypePredicate(BUY),EQStr(name,QQQ),GTAttr(price,"x")))){window:500}{windowType:time}
