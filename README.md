@@ -6,9 +6,9 @@ It is based on symbolic automata and full- or variable-order Markov models.
 ## Updates
 
 - 2023/11/15
-  - Wayeb has been upgraded to version 0.6.0.
-  - Released code for variable-order Markov models.
-  - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
+    - Wayeb has been upgraded to version 0.6.0.
+    - Released code for variable-order Markov models.
+    - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
 
 ## Quick start
 
@@ -99,7 +99,37 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 - [How to cite Wayeb](docs/references.md)
 
 ## Citing Wayeb
-If you want to cite Wayeb, use the following references:
+If you want to cite Wayeb, use the following reference:
+```
+@article{DBLP:journals/vldb/AlevizosAP22,
+  author       = {Elias Alevizos and
+                  Alexander Artikis and
+                  Georgios Paliouras},
+  title        = {Complex event forecasting with prediction suffix trees},
+  journal      = {{VLDB} J.},
+  volume       = {31},
+  number       = {1},
+  pages        = {157--180},
+  year         = {2022}
+}
+```
+This paper describes a version of Wayeb that works with symbolic automata and variable-order Markov models.
+
+The version that works with symbolic register automata and variable-order Markov models is described here
+(to be updated with a version presenting the use of symbolic register transducers):
+```
+@article{DBLP:journals/corr/abs-2110-04032,
+author       = {Elias Alevizos and
+Alexander Artikis and
+Georgios Paliouras},
+title        = {Symbolic Register Automata for Complex Event Recognition and Forecasting},
+journal      = {CoRR},
+volume       = {abs/2110.04032},
+year         = {2021}
+}
+```
+
+Older versions have been presented in the following papers:
 
 (Version that works only with classical automata and full-order Markov models)
 ```
@@ -141,33 +171,6 @@ If you want to cite Wayeb, use the following references:
 }
 
 ```
-
-(Version that works only with symbolic automata and variable-order Markov models)
-```
-@article{DBLP:journals/vldbj/AlevizosAP20,
-  author    = {Elias Alevizos and
-               Alexander Artikis and
-               Georgios Paliouras},
-  title     = {Complex Event Forecasting with Prediction Suffix Trees: a Formal Framework},
-  journal   = {VLDBJ}
-  year      = {2020}
-} 
-```
-
-(Version that works only with symbolic register automata and variable-order Markov models.
-To be updated.)
-```
-@article{DBLP:journals/corr/abs-2110-04032,
-author       = {Elias Alevizos and
-Alexander Artikis and
-Georgios Paliouras},
-title        = {Symbolic Register Automata for Complex Event Recognition and Forecasting},
-journal      = {CoRR},
-volume       = {abs/2110.04032},
-year         = {2021}
-}
-```
-
 
 ## Contributors
 
