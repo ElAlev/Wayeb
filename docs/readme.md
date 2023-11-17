@@ -89,14 +89,14 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 
 ## Documentation
 
-- [Building](docs/building.md)
-- [Overview](docs/overview.md)
-- [Recognition](docs/cep.md)
-- [Forecasting with full-oder Markov models](docs/ceffmm.md)
-- [Forecasting with variable-oder Markov models](docs/cefvmm.md)
-- [Reading streams from Kafka](docs/kafkainput.md)
-- [Using Wayeb as a library](docs/lib.md)
-- [How to cite Wayeb](docs/references.md)
+- [Building](building.md)
+- [Overview](overview.md)
+- [Recognition](cep.md)
+- [Forecasting with full-oder Markov models](ceffmm.md)
+- [Forecasting with variable-oder Markov models](cefvmm.md)
+- [Reading streams from Kafka](kafkainput.md)
+- [Using Wayeb as a library](lib.md)
+- [How to cite Wayeb](references.md)
 
 ## Citing Wayeb
 If you want to cite Wayeb, use the following reference:
