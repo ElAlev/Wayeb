@@ -91,10 +91,11 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 
 - [Building](building.md)
 - [Overview](overview.md)
+- [Wayeb language](lang.md)
+- [Representing streams of input events](streams.md)
 - [Recognition](cep.md)
 - [Forecasting with full-oder Markov models](ceffmm.md)
 - [Forecasting with variable-oder Markov models](cefvmm.md)
-- [Reading streams from Kafka](kafkainput.md)
 - [Using Wayeb as a library](lib.md)
 - [How to cite Wayeb](references.md)
 

@@ -6,9 +6,9 @@ It is based on symbolic automata and full- or variable-order Markov models.
 ## Updates
 
 - 2023/11/15
-    - Wayeb has been upgraded to version 0.6.0.
-    - Released code for variable-order Markov models.
-    - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
+  - Wayeb has been upgraded to version 0.6.0.
+  - Released code for variable-order Markov models.
+  - Released code for symbolic regular expressions with memory and output (SREMO) and symbolic register transducers (SRT).
 
 ## Quick start
 
@@ -91,6 +91,8 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 
 - [Building](docs/building.md)
 - [Overview](docs/overview.md)
+- [Wayeb language](docs/lang.md)
+- [Representing streams of input events](docs/streams.md)
 - [Recognition](docs/cep.md)
 - [Forecasting with full-oder Markov models](docs/ceffmm.md)
 - [Forecasting with variable-oder Markov models](docs/cefvmm.md)
