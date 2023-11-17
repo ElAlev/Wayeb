@@ -96,7 +96,6 @@ permission of its author(s) (Elias Alevizos) and a possible request for licensin
 - [Recognition](docs/cep.md)
 - [Forecasting with full-oder Markov models](docs/ceffmm.md)
 - [Forecasting with variable-oder Markov models](docs/cefvmm.md)
-- [Reading streams from Kafka](docs/kafkainput.md)
 - [Using Wayeb as a library](docs/lib.md)
 - [How to cite Wayeb](docs/references.md)
 
